@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro de Visitas</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1> Sistema de Registro de Visitas</h1>
+            <div class="status" id="status">Conectado </div>
+        </header>
+
+        <main>
+            <!-- Sección de registro -->
+            <section class="card">
+                <h2> Registrar Visita</h2>
+                <form id="formIngreso" class="form">
+                    <div class="form-group">
+                        <label for="rut">RUT:</label>
+                        <input type="text" id="rut" placeholder="12345678-9" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="nombre">Nombre completo:</label>
+                        <input type="text" id="nombre" placeholder="Juan Pérez" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary"> Registrar Ingreso</button>
+                </form>
+
+                <div class="form">
+                    <h3>🚪 Registrar Salida</h3>
+                    <div class="form-group">
+                        <label for="rutSalida">RUT del visitante:</label>
+                        <input type="text" id="rutSalida" placeholder="12345678-9" required>
+                    </div>
+                    <button type="button" id="btnSalida" class="btn btn-secondary">🚪 Registrar Salida</button>
+                </div>
+            </section>
+
+            <!-- Sección de búsqueda y acciones -->
+            <section class="card">
+                <h2> Acciones Rápidas</h2>
+                <div class="actions">
+                    <button id="btnVisitas" class="btn btn-info"> Ver Todas las Visitas</button>
+                    <button id="btnBuscar" class="btn btn-info"> Buscar por RUT</button>
+                    <button id="btnLimpiar" class="btn btn-warning"> Limpiar Resultados</button>
+                </div>
+                
+                <div class="search-section" id="searchSection" style="display: none;">
+                    <div class="form-group">
+                        <label for="rutBuscar">RUT a buscar:</label>
+                        <input type="text" id="rutBuscar" placeholder="12345678-9">
+                    </div>
+                    <button id="btnBuscarRut" class="btn btn-info"> Buscar</button>
+                </div>
+            </section>
+
+            <!-- Resultados -->
+            <section class="card">
+                <h2> Resultados</h2>
+                <div id="loading" class="loading" style="display: none;">Cargando...</div>
+                <div id="resultado" class="resultado"></div>
+            </section>
+        </main>
+
+        <footer>
+            <p>Sistema de Registro de Visitas v1.0.0</p>
+        </footer>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,56 @@
+{
+  "name": "registro-visitas-electron",
+  "version": "1.0.0",
+  "description": "Sistema de registro de visitantes - App de escritorio",
+  "main": "src/electron/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build": "electron-builder",
+    "server": "node src/backend/app.js"
+  },
+  "keywords": [
+    "electron",
+    "visitas",
+    "registro",
+    "desktop"
+  ],
+  "author": "Tu Nombre",
+  "license": "MIT",
+  "dependencies": {
+    "@zxing/library": "^0.21.3",
+    "better-sqlite3": "^12.4.1",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "sqlite3": "^5.1.6"
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.0.0",
+    "nodemon": "^3.0.1",
+    "standard": "^17.1.2"
+  },
+  "build": {
+    "appId": "com.tunombre.registro-visitas",
+    "productName": "Registro de Visitas",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "node_modules/**/*"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "src/frontend/assets/icon.ico"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "src/frontend/assets/icon.icns"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "src/frontend/assets/icon.png"
+    }
+  }
+}
