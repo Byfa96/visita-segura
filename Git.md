@@ -86,7 +86,7 @@ Digamos que estamos trabajando en una nueva característica llamada "Actualizaci
 6. `git push origin feature/actualizacion-ui`
 7. Ir a la web de GitHub y crear un pull request.
 8. Borrar la rama local con `git branch -d feature/actualizacion-ui` y la remota desde GitHub.
-9 . Volver a la rama main con `git checkout main` y hacer otro `git pull origin main` para asegurarnos de tener la última versión si el pull request ya fue aceptado.
+9. Volver a la rama main con `git checkout main` y hacer otro `git pull origin main` para asegurarnos de tener la última versión si el pull request ya fue aceptado.
 
 
 Eso sería por ahora.
