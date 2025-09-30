@@ -182,3 +182,118 @@ footer {
         margin: 5px 0;
     }
 }
+
+/* Estadísticas */
+.stats {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.stat-card {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    padding: 15px;
+    border-radius: 10px;
+    text-align: center;
+    flex: 1;
+    min-width: 120px;
+}
+
+.stat-card h3 {
+    margin: 0 0 10px 0;
+    font-size: 0.9em;
+    opacity: 0.9;
+}
+
+.stat-number {
+    font-size: 1.8em;
+    font-weight: bold;
+}
+
+/* Mejoras para los items de visita */
+.visita-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.visita-header strong {
+    flex: 1;
+    font-size: 1.1em;
+}
+
+.rut {
+    background: #667eea;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.8em;
+}
+
+.visita-info {
+    margin-bottom: 10px;
+    line-height: 1.4;
+}
+
+.visita-actions {
+    text-align: right;
+    border-top: 1px solid #eee;
+    padding-top: 10px;
+    margin-top: 10px;
+}
+
+.btn-salida {
+    background: #e53e3e;
+    color: white;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: all 0.3s;
+}
+
+.btn-salida:hover {
+    background: #c53030;
+    transform: translateY(-2px);
+}
+
+/* Estados de visita mejorados */
+.visita-activa {
+    border-left: 4px solid #48bb78;
+    background: #f0fff4;
+}
+
+.visita-completada {
+    border-left: 4px solid #ed8936;
+    background: #fffaf0;
+}
+
+/* Mensajes de estado */
+.message {
+    padding: 15px;
+    border-radius: 8px;
+    margin: 10px 0;
+    text-align: center;
+}
+
+.message.success {
+    background: #c6f6d5;
+    color: #22543d;
+    border: 1px solid #9ae6b4;
+}
+
+.message.error {
+    background: #fed7d7;
+    color: #742a2a;
+    border: 1px solid #feb2b2;
+}
+
+.message.info {
+    background: #bee3f8;
+    color: #1a365d;
+    border: 1px solid #90cdf4;
+}

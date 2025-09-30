@@ -8,7 +8,7 @@ class VisitasApp {
     }
 
     init() {
-        console.log(' Aplicación de Registro de Visitas iniciada');
+        console.log('Aplicación de Registro de Visitas iniciada');
     }
 
     setupEventListeners() {
@@ -18,7 +18,7 @@ class VisitasApp {
             this.registrarIngreso();
         });
 
-        // Registrar salida
+        // Registrar salida (por rut)
         document.getElementById('btnSalida').addEventListener('click', () => {
             this.registrarSalida();
         });
@@ -101,6 +101,11 @@ class VisitasApp {
                 this.showMessage(` Ingreso registrado: ${nombre} (${rut})`, 'success');
                 document.getElementById('formIngreso').reset();
                 
+                // Recargar automáticamente la lista de visitas
+                setTimeout(() => {
+                    this.obtenerVisitas();
+                }, 1000);
+                
                 if (window.electronAPI) {
                     window.electronAPI.showDialog(`Ingreso registrado para ${nombre}`);
                 }
@@ -139,8 +144,53 @@ class VisitasApp {
                 this.showMessage(` Salida registrada para RUT: ${rut}`, 'success');
                 document.getElementById('rutSalida').value = '';
                 
+                // Recargar automáticamente la lista de visitas
+                setTimeout(() => {
+                    this.obtenerVisitas();
+                }, 1000);
+                
                 if (window.electronAPI) {
                     window.electronAPI.showDialog(`Salida registrada para ${rut}`);
+                }
+            } else {
+                this.showMessage(` Error: ${data.error}`, 'error');
+            }
+        } catch (error) {
+            this.showMessage(' Error de conexión con el servidor', 'error');
+        } finally {
+            this.showLoading(false);
+        }
+    }
+
+    //  Registrar salida directamente desde el botón
+    async registrarSalidaDirecta(rut, nombre) {
+        if (!confirm(`¿Registrar salida de ${nombre} (${rut})?`)) {
+            return;
+        }
+
+        this.showLoading(true);
+
+        try {
+            const response = await fetch(`${API_BASE}/salida`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ rut })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                this.showMessage(` Salida registrada para ${nombre}`, 'success');
+                
+                // Recargar la lista de visitas automáticamente
+                setTimeout(() => {
+                    this.obtenerVisitas();
+                }, 1000);
+
+                if (window.electronAPI) {
+                    window.electronAPI.showDialog(`Salida registrada para ${nombre}`);
                 }
             } else {
                 this.showMessage(` Error: ${data.error}`, 'error');
@@ -197,6 +247,7 @@ class VisitasApp {
         }
     }
 
+    // FUNCIÓN MEJORADA: Ahora incluye botones de salida
     mostrarVisitas(visitas) {
         const resultadoEl = document.getElementById('resultado');
         
@@ -205,19 +256,69 @@ class VisitasApp {
             return;
         }
 
-        const html = `
-            <h3>📊 Total de visitas: ${visitas.length}</h3>
-            ${visitas.map(visita => `
-                <div class="visita-item ${!visita.fecha_salida ? 'visita-activa' : 'visita-completada'}">
-                    <strong>${visita.nombre}</strong> (${visita.rut})<br>
-                    <small>Ingreso: ${visita.fecha_ingreso} ${visita.hora_ingreso}</small>
-                    ${visita.fecha_salida ? 
-                        `<br><small>Salida: ${visita.fecha_salida} ${visita.hora_salida}</small>` : 
-                        '<br><em> Visitante actualmente en el edificio</em>'
-                    }
+        // Separar visitas activas y completadas
+        const visitasActivas = visitas.filter(v => !v.fecha_salida);
+        const visitasCompletadas = visitas.filter(v => v.fecha_salida);
+
+        let html = `
+            <div class="stats">
+                <div class="stat-card">
+                    <h3> Activos</h3>
+                    <span class="stat-number">${visitasActivas.length}</span>
                 </div>
-            `).join('')}
+                <div class="stat-card">
+                    <h3> Completados</h3>
+                    <span class="stat-number">${visitasCompletadas.length}</span>
+                </div>
+                <div class="stat-card">
+                    <h3> Total</h3>
+                    <span class="stat-number">${visitas.length}</span>
+                </div>
+            </div>
         `;
+
+        // Mostrar visitas activas primero con botones de salida
+        if (visitasActivas.length > 0) {
+            html += `<h3> Visitantes Actualmente en la Sede </h3>`;
+            html += visitasActivas.map(visita => `
+                <div class="visita-item visita-activa">
+                    <div class="visita-header">
+                        <strong>${visita.nombre}</strong>
+                        <span class="rut">${visita.rut}</span>
+                    </div>
+                    <div class="visita-info">
+                        <small> Ingreso: ${visita.fecha_ingreso} ${visita.hora_ingreso}</small>
+                        <br>
+                        <small> Tiempo dentro: ${this.calcularTiempo(visita.fecha_ingreso, visita.hora_ingreso)}</small>
+                    </div>
+                    <div class="visita-actions">
+                        <button class="btn btn-salida" onclick="app.registrarSalidaDirecta('${visita.rut}', '${visita.nombre.replace(/'/g, "\\'")}')">
+                             Registrar Salida
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Mostrar visitas completadas (sin botones)
+        if (visitasCompletadas.length > 0) {
+            html += `<h3> Historial de Visitas</h3>`;
+            html += visitasCompletadas.map(visita => `
+                <div class="visita-item visita-completada">
+                    <div class="visita-header">
+                        <strong>${visita.nombre}</strong>
+                        <span class="rut">${visita.rut}</span>
+                    </div>
+                    <div class="visita-info">
+                        <small> Ingreso: ${visita.fecha_ingreso} ${visita.hora_ingreso}</small>
+                        <br>
+                        <small> Salida: ${visita.fecha_salida} ${visita.hora_salida}</small>
+                        <br>
+                        <small>⏱ Duración: ${this.calcularDuracion(visita.fecha_ingreso, visita.hora_ingreso, visita.fecha_salida, visita.hora_salida)}</small>
+                    </div>
+                </div>
+            `).join('');
+        }
 
         resultadoEl.innerHTML = html;
     }
@@ -232,17 +333,64 @@ class VisitasApp {
 
         resultadoEl.innerHTML = `
             <div class="visita-item ${!visita.fecha_salida ? 'visita-activa' : 'visita-completada'}">
-                <h4>👤 Información del Visitante</h4>
-                <p><strong>Nombre:</strong> ${visita.nombre}</p>
-                <p><strong>RUT:</strong> ${visita.rut}</p>
-                <p><strong>Fecha de ingreso:</strong> ${visita.fecha_ingreso} ${visita.hora_ingreso}</p>
-                ${visita.fecha_salida ? 
-                    `<p><strong>Fecha de salida:</strong> ${visita.fecha_salida} ${visita.hora_salida}</p>` : 
-                    '<p><strong>Estado:</strong>  Actualmente en el edificio</p>'
-                }
-                <p><strong>Registrado el:</strong> ${new Date(visita.created_at).toLocaleString()}</p>
+                <h4>Información del Visitante</h4>
+                <div class="visita-header">
+                    <strong>${visita.nombre}</strong>
+                    <span class="rut">${visita.rut}</span>
+                </div>
+                <div class="visita-info">
+                    <p><strong>Fecha de ingreso:</strong> ${visita.fecha_ingreso} ${visita.hora_ingreso}</p>
+                    ${visita.fecha_salida ? 
+                        `<p><strong>Fecha de salida:</strong> ${visita.fecha_salida} ${visita.hora_salida}</p>` : 
+                        `<p><strong>Estado:</strong>  Actualmente en el edificio</p>
+                         <div class="visita-actions">
+                            <button class="btn btn-salida" onclick="app.registrarSalidaDirecta('${visita.rut}', '${visita.nombre.replace(/'/g, "\\'")}')">
+                                 Registrar Salida
+                            </button>
+                         </div>`
+                    }
+                    <p><strong>Registrado el:</strong> ${new Date(visita.created_at).toLocaleString()}</p>
+                </div>
             </div>
         `;
+    }
+
+    // Función para calcular tiempo transcurrido
+    calcularTiempo(fecha, hora) {
+        try {
+            const ingreso = new Date(`${fecha}T${hora}`);
+            const ahora = new Date();
+            const diffMs = ahora - ingreso;
+            const diffMins = Math.floor(diffMs / 60000);
+            const diffHours = Math.floor(diffMins / 60);
+            const mins = diffMins % 60;
+
+            if (diffHours > 0) {
+                return `${diffHours}h ${mins}m`;
+            }
+            return `${mins} minutos`;
+        } catch (error) {
+            return '--';
+        }
+    }
+
+    // Función para calcular duración total
+    calcularDuracion(fechaInicio, horaInicio, fechaFin, horaFin) {
+        try {
+            const inicio = new Date(`${fechaInicio}T${horaInicio}`);
+            const fin = new Date(`${fechaFin}T${horaFin}`);
+            const diffMs = fin - inicio;
+            const diffMins = Math.floor(diffMs / 60000);
+            const diffHours = Math.floor(diffMins / 60);
+            const mins = diffMins % 60;
+
+            if (diffHours > 0) {
+                return `${diffHours}h ${mins}m`;
+            }
+            return `${mins} minutos`;
+        } catch (error) {
+            return '--';
+        }
     }
 
     toggleSearch() {
@@ -270,7 +418,10 @@ class VisitasApp {
     }
 }
 
-// Inicializar la aplicación cuando el DOM esté listo
+// Hacer la instancia global para que los botones puedan acceder a ella
+const app = new VisitasApp();
+
+// También inicializar cuando el DOM esté listo por si acaso
 document.addEventListener('DOMContentLoaded', () => {
-    new VisitasApp();
+    window.app = app;
 });
