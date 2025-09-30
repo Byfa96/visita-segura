@@ -5,6 +5,7 @@ class VisitasApp {
         this.init();
         this.setupEventListeners();
         this.checkConnection();
+        this.setupScannerInput();
     }
 
     init() {
@@ -415,6 +416,31 @@ class VisitasApp {
                 resultadoEl.innerHTML = '';
             }
         }, 5000);
+    }
+
+    //Parte del scanner, por ahora código de pruebas hasta tener pistola
+    setupScannerInput() {
+        let buffer = '';
+        let lastTime = Date.now();
+        
+        document.addEventListener('keydown', (e) => {
+            const now = Date.now();
+            const diff = now - lastTime;
+
+            //Tiempo entre pulsaciones, si es mayor a 100ms se considera un nuevo input
+
+            if (diff > 100) buffer = '';
+            lastTime = now;
+
+            if (e.key === 'Enter') {
+                const rutInput = document.getElementById('rut');
+                rutInput.value = buffer.trim();
+                document.getElementById('nombre').focus();
+                buffer = '';
+            } else if (e.key.length === 1) {
+                buffer += e.key;
+            }
+        });
     }
 }
 
