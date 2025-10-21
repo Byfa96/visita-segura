@@ -19,10 +19,10 @@ class VisitasApp {
             this.registrarIngreso();
         });
 
-        // Registrar salida (por rut)
-        document.getElementById('btnSalida').addEventListener('click', () => {
-            this.registrarSalida();
-        });
+        // // Registrar salida (por rut)
+        // document.getElementById('btnSalida').addEventListener('click', () => {
+        //     this.registrarSalida();
+        // });
 
         // Ver todas las visitas
         document.getElementById('btnVisitas').addEventListener('click', () => {
