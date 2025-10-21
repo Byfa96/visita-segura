@@ -6,7 +6,9 @@
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background-color: #1c1c1c;
+    /* gris oscuro casi negro */
+    color: white;
     min-height: 100vh;
 }
 
@@ -25,11 +27,11 @@ header {
 header h1 {
     font-size: 2.5em;
     margin-bottom: 10px;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .status {
-    background: rgba(255,255,255,0.2);
+    background: rgba(34, 204, 43, 0.562);
     padding: 10px 20px;
     border-radius: 20px;
     display: inline-block;
@@ -37,11 +39,12 @@ header h1 {
 }
 
 .card {
-    background: white;
-    border-radius: 15px;
-    padding: 30px;
-    margin-bottom: 20px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+  background-color: #f5f5f5; /* blanco humo */
+  color: #222;
+  border-radius: 15px;
+  padding: 30px;
+  margin-bottom: 20px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
 }
 
 .card h2 {
@@ -97,22 +100,22 @@ input:focus {
 }
 
 .btn-secondary {
-    background: #f093fb;
+    background: #ea6666;
     color: white;
 }
 
 .btn-secondary:hover {
-    background: #e879f9;
+    background: #ea6666;
     transform: translateY(-2px);
 }
 
 .btn-info {
-    background: #4fd1c5;
+    background: #667eea;
     color: white;
 }
 
 .btn-info:hover {
-    background: #38b2ac;
+    background: #667eea;
     transform: translateY(-2px);
 }
 
@@ -172,11 +175,11 @@ footer {
     .container {
         padding: 10px;
     }
-    
+
     .actions {
         flex-direction: column;
     }
-    
+
     .btn {
         width: 100%;
         margin: 5px 0;
@@ -246,7 +249,7 @@ footer {
 }
 
 .btn-salida {
-    background: #e53e3e;
+    background: #ea6666;
     color: white;
     padding: 8px 16px;
     border: none;
@@ -257,8 +260,8 @@ footer {
 }
 
 .btn-salida:hover {
-    background: #c53030;
-    transform: translateY(-2px);
+    background: #ea6666;
+    color: white;
 }
 
 /* Estados de visita mejorados */
@@ -296,4 +299,12 @@ footer {
     background: #bee3f8;
     color: #1a365d;
     border: 1px solid #90cdf4;
+}
+
+.barra-superior {
+    width: 100%;
+    height: 50px;
+    background: linear-gradient(to right, var(--duoc-amarillo, #ffcc00) 50%, #000000 50%);
+    border-bottom: 2px solid var(--duoc-gris-borde, #e0e0e0);
+    box-sizing: border-box;
 }
