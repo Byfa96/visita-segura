@@ -7,6 +7,8 @@ La app mantiene la tabla existente `visitantes` para no romper el código ni las
 - `personas(id, rut UNIQUE, nombre, created_at)`
 - `visitas(id, persona_id FK personas(id), fecha_ingreso, hora_ingreso, fecha_salida, hora_salida, created_at)`
 - `areas(id, nombre UNIQUE, descripcion)` (opcional, aún sin uso en la app)
+ - `areas(id, nombre UNIQUE, descripcion)` (opcional)
+ - Enlace opcional de área: `visitantes.area_id` y `visitas.area_id` apuntan a `areas.id`.
 
 Se crearon triggers para sincronizar automáticamente:
 
@@ -19,6 +21,21 @@ Notas:
 
 - La exportación CSV diaria y manual sigue usando `visitantes` y no cambia sus columnas.
 - Al generar el reporte, sólo se vacía `visitantes`; el historial en `visitas` se conserva.
+
+## API: uso de área opcional en ingreso
+
+El endpoint `POST /api/ingreso` ahora acepta opcionalmente:
+
+- `area_id`: id numérico existente en la tabla `areas`.
+- `area`: nombre de área (si no existe, se crea automáticamente).
+
+Ejemplos de body JSON:
+
+```
+{ "rut": "12345678-9", "nombre": "Ana" }
+{ "rut": "12345678-9", "nombre": "Ana", "area": "Recepción" }
+{ "rut": "12345678-9", "nombre": "Ana", "area_id": 1 }
+```
 
 ## Consultas útiles (SQLite)
 

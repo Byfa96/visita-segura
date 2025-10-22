@@ -57,6 +57,12 @@ class Database {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
           )`,
 
+          `CREATE TABLE IF NOT EXISTS areas (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nombre TEXT NOT NULL UNIQUE,
+            descripcion TEXT
+          )`,
+
           `CREATE TABLE IF NOT EXISTS visitas (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             persona_id INTEGER NOT NULL,
@@ -64,28 +70,33 @@ class Database {
             hora_ingreso TEXT NOT NULL,
             fecha_salida TEXT,
             hora_salida TEXT,
+            area_id INTEGER,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (persona_id) REFERENCES personas(id)
+            FOREIGN KEY (persona_id) REFERENCES personas(id),
+            FOREIGN KEY (area_id) REFERENCES areas(id)
           )`,
 
-          `CREATE TABLE IF NOT EXISTS areas (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nombre TEXT NOT NULL UNIQUE,
-            descripcion TEXT
-          )`,
+          // Intentar agregar columnas nuevas si ya existía la DB (antes de crear índices/triggers)
+          `ALTER TABLE visitantes ADD COLUMN area_id INTEGER`,
+          `ALTER TABLE visitas ADD COLUMN area_id INTEGER`,
 
           // Índices útiles para rendimiento
           `CREATE INDEX IF NOT EXISTS idx_visitas_persona_fecha ON visitas(persona_id, fecha_ingreso, hora_ingreso)`,
+          `CREATE INDEX IF NOT EXISTS idx_visitas_area ON visitas(area_id)`,
 
           // Trigger: al insertar en visitantes, upsert en personas y crear visita
+          `DROP TRIGGER IF EXISTS trg_visitantes_ai`,
+          `DROP TRIGGER IF EXISTS trg_visitantes_au_salida`,
+          `DROP TRIGGER IF EXISTS trg_visitantes_au_area`,
+
           `CREATE TRIGGER IF NOT EXISTS trg_visitantes_ai
             AFTER INSERT ON visitantes
           BEGIN
             INSERT INTO personas(rut, nombre) VALUES (NEW.rut, NEW.nombre)
               ON CONFLICT(rut) DO UPDATE SET nombre=excluded.nombre;
 
-            INSERT INTO visitas(persona_id, fecha_ingreso, hora_ingreso)
-            VALUES ((SELECT id FROM personas WHERE rut = NEW.rut), NEW.fecha_ingreso, NEW.hora_ingreso);
+            INSERT INTO visitas(persona_id, fecha_ingreso, hora_ingreso, area_id)
+            VALUES ((SELECT id FROM personas WHERE rut = NEW.rut), NEW.fecha_ingreso, NEW.hora_ingreso, NEW.area_id);
 
             UPDATE visitantes SET visita_id = last_insert_rowid() WHERE id = NEW.id;
           END`,
@@ -111,6 +122,16 @@ class Database {
               WHERE p.rut = NEW.rut AND v.fecha_salida IS NULL
               ORDER BY v.id DESC LIMIT 1
             );
+          END`,
+
+          // Trigger: si cambia el área del visitante mientras la visita está abierta, reflejarlo
+          `CREATE TRIGGER IF NOT EXISTS trg_visitantes_au_area
+            AFTER UPDATE OF area_id ON visitantes
+            WHEN NEW.area_id IS NOT OLD.area_id
+          BEGIN
+            UPDATE visitas
+              SET area_id = NEW.area_id
+            WHERE id = NEW.visita_id;
           END`,
         ];
 
@@ -162,8 +183,8 @@ class Database {
              ON CONFLICT(rut) DO UPDATE SET nombre=excluded.nombre`
           );
           const insertVisita = this.db.prepare(
-            `INSERT INTO visitas(persona_id, fecha_ingreso, hora_ingreso, fecha_salida, hora_salida)
-             VALUES ((SELECT id FROM personas WHERE rut = ?), ?, ?, ?, ?)`
+            `INSERT INTO visitas(persona_id, fecha_ingreso, hora_ingreso, fecha_salida, hora_salida, area_id)
+             VALUES ((SELECT id FROM personas WHERE rut = ?), ?, ?, ?, ?, ?)`
           );
           const updateVisitante = this.db.prepare(
             `UPDATE visitantes SET visita_id = (SELECT id FROM visitas WHERE persona_id = (SELECT id FROM personas WHERE rut = ?) AND fecha_ingreso = ? AND hora_ingreso = ? ORDER BY id DESC LIMIT 1)
@@ -172,7 +193,7 @@ class Database {
 
           for (const r of rows) {
             upsertPersona.run([r.rut, r.nombre]);
-            insertVisita.run([r.rut, r.fecha_ingreso, r.hora_ingreso, r.fecha_salida || null, r.hora_salida || null]);
+            insertVisita.run([r.rut, r.fecha_ingreso, r.hora_ingreso, r.fecha_salida || null, r.hora_salida || null, r.area_id || null]);
             updateVisitante.run([r.rut, r.fecha_ingreso, r.hora_ingreso, r.id]);
           }
 

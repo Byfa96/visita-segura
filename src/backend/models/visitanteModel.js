@@ -2,20 +2,44 @@ const database = require('../database/database');
 
 
 class VisitanteModel {
-  async registrarIngreso(rut, nombre) {
+  async registrarIngreso(rut, nombre, { area_id = null, area = null } = {}) {
     const fecha = new Date();
     const fechaIngreso = fecha.toISOString().split('T')[0];
     const horaIngreso = fecha.toTimeString().split(' ')[0];
 
 
     return new Promise((resolve, reject) => {
-      const sql = `
-        INSERT INTO visitantes (rut, nombre, fecha_ingreso, hora_ingreso) 
-        VALUES (?, ?, ?, ?)
-      `;
+      const db = database.db;
 
+      const ensureAreaId = (cb) => {
+        if (area_id != null) return cb(null, area_id);
+        const areaNombre = typeof area === 'string' ? area.trim() : null;
+        if (!areaNombre) return cb(null, null);
+        const upsertArea = `INSERT INTO areas(nombre) VALUES (?) ON CONFLICT(nombre) DO NOTHING`;
+        db.run(upsertArea, [areaNombre], () => {
+          // Ignorar error si ya existe
+          db.get(`SELECT id FROM areas WHERE nombre = ?`, [areaNombre], (e, row) => {
+            if (e) return cb(e);
+            cb(null, row ? row.id : null);
+          });
+        });
+      };
 
-      database.db.run(sql, [rut, nombre, fechaIngreso, horaIngreso], function(err) {
+      ensureAreaId((areaErr, areaIdFinal) => {
+        if (areaErr) return reject(areaErr);
+
+        const cols = ['rut', 'nombre', 'fecha_ingreso', 'hora_ingreso'];
+        const placeholders = ['?', '?', '?', '?'];
+        const params = [rut, nombre, fechaIngreso, horaIngreso];
+        if (areaIdFinal != null) {
+          cols.push('area_id');
+          placeholders.push('?');
+          params.push(areaIdFinal);
+        }
+
+        const sql = `INSERT INTO visitantes (${cols.join(', ')}) VALUES (${placeholders.join(', ')})`;
+
+        db.run(sql, params, function(err) {
         if (err) {
           reject(err);
         } else {
@@ -24,9 +48,11 @@ class VisitanteModel {
             rut,
             nombre,
             fecha_ingreso: fechaIngreso,
-            hora_ingreso: horaIngreso
+            hora_ingreso: horaIngreso,
+            area_id: areaIdFinal || null
           });
         }
+        });
       });
     });
   }
