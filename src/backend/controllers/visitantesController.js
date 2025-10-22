@@ -4,7 +4,7 @@ const visitanteModel = require('../models/visitanteModel');
 class VisitantesController {
   async registrarIngreso(req, res) {
     try {
-      const { rut, nombre } = req.body;
+  const { rut, nombre, area_id, area } = req.body;
 
 
       // Validaciones básicas
@@ -15,7 +15,7 @@ class VisitantesController {
       }
 
 
-      const resultado = await visitanteModel.registrarIngreso(rut, nombre);
+  const resultado = await visitanteModel.registrarIngreso(rut, nombre, { area_id, area });
       
       res.status(201).json({
         success: true,

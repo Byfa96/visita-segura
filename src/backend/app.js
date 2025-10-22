@@ -43,7 +43,7 @@ app.post('/api/generar-reporte', async (req, res) => {
     // Agregar timestamp al nombre del archivo para hacerlo único
     const reportePath = path.join(reportsDir, `reporte_${fechaString}_${timestamp}.csv`);
 
-    db.all("SELECT * FROM visitantes", (err, rows) => {
+  db.all("SELECT id, rut, nombre, fecha_ingreso, hora_ingreso, fecha_salida, hora_salida, created_at FROM visitantes", (err, rows) => {
       if (err) {
         console.error('Error al obtener los datos:', err);
         return res.status(500).json({ error: 'Error al generar reporte' });
@@ -105,7 +105,7 @@ async function generarReporteDiario() {
 
   console.log(' Generando reporte diario...');
 
-  db.all("SELECT * FROM visitantes", (err, rows) => {
+  db.all("SELECT id, rut, nombre, fecha_ingreso, hora_ingreso, fecha_salida, hora_salida, created_at FROM visitantes", (err, rows) => {
     if (err) {
       console.error('Error al obtener los datos:', err);
       return;
