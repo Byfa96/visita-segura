@@ -9,7 +9,7 @@ class VisitasApp {
     }
 
     init() {
-        console.log('Aplicación de Registro de Visitas iniciada');
+        console.log(' Aplicación de Registro de Visitas iniciada');
     }
 
     setupEventListeners() {
@@ -19,14 +19,19 @@ class VisitasApp {
             this.registrarIngreso();
         });
 
-        // // Registrar salida (por rut)
-        // document.getElementById('btnSalida').addEventListener('click', () => {
-        //     this.registrarSalida();
-        // });
-
         // Ver todas las visitas
         document.getElementById('btnVisitas').addEventListener('click', () => {
             this.obtenerVisitas();
+        });
+
+        // Ver reportes
+        document.getElementById('btnReportes').addEventListener('click', () => {
+            this.listarReportes();
+        });
+
+        // Generar reporte
+        document.getElementById('btnReporte').addEventListener('click', () => {
+            this.generarReporte();
         });
 
         // Buscar por RUT
@@ -59,10 +64,10 @@ class VisitasApp {
         try {
             const response = await fetch(`${API_BASE.replace('/api', '')}/health`);
             if (response.ok) {
-                this.updateStatus('Conectado ', 'success');
+                this.updateStatus('Conectado ✅', 'success');
             }
         } catch (error) {
-            this.updateStatus('Error de conexión ', 'error');
+            this.updateStatus('Error de conexión ❌', 'error');
         }
     }
 
@@ -99,71 +104,28 @@ class VisitasApp {
             const data = await response.json();
 
             if (response.ok) {
-                this.showMessage(` Ingreso registrado: ${nombre} (${rut})`, 'success');
+                this.showMessage(`✅ Ingreso registrado: ${nombre} (${rut})`, 'success');
                 document.getElementById('formIngreso').reset();
-                
+
                 // Recargar automáticamente la lista de visitas
                 setTimeout(() => {
                     this.obtenerVisitas();
                 }, 1000);
-                
+
                 if (window.electronAPI) {
                     window.electronAPI.showDialog(`Ingreso registrado para ${nombre}`);
                 }
             } else {
-                this.showMessage(` Error: ${data.error}`, 'error');
+                this.showMessage(`❌ Error: ${data.error}`, 'error');
             }
         } catch (error) {
-            this.showMessage(' Error de conexión con el servidor', 'error');
+            this.showMessage('❌ Error de conexión con el servidor', 'error');
         } finally {
             this.showLoading(false);
         }
     }
 
-    async registrarSalida() {
-        const rut = document.getElementById('rutSalida').value.trim();
-
-        if (!rut) {
-            this.showMessage('Por favor ingrese un RUT', 'error');
-            return;
-        }
-
-        this.showLoading(true);
-
-        try {
-            const response = await fetch(`${API_BASE}/salida`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ rut })
-            });
-
-            const data = await response.json();
-
-            if (response.ok) {
-                this.showMessage(` Salida registrada para RUT: ${rut}`, 'success');
-                document.getElementById('rutSalida').value = '';
-                
-                // Recargar automáticamente la lista de visitas
-                setTimeout(() => {
-                    this.obtenerVisitas();
-                }, 1000);
-                
-                if (window.electronAPI) {
-                    window.electronAPI.showDialog(`Salida registrada para ${rut}`);
-                }
-            } else {
-                this.showMessage(` Error: ${data.error}`, 'error');
-            }
-        } catch (error) {
-            this.showMessage(' Error de conexión con el servidor', 'error');
-        } finally {
-            this.showLoading(false);
-        }
-    }
-
-    //  Registrar salida directamente desde el botón
+    // Registrar salida directamente desde el botón
     async registrarSalidaDirecta(rut, nombre) {
         if (!confirm(`¿Registrar salida de ${nombre} (${rut})?`)) {
             return;
@@ -183,8 +145,8 @@ class VisitasApp {
             const data = await response.json();
 
             if (response.ok) {
-                this.showMessage(` Salida registrada para ${nombre}`, 'success');
-                
+                this.showMessage(`✅ Salida registrada para ${nombre}`, 'success');
+
                 // Recargar la lista de visitas automáticamente
                 setTimeout(() => {
                     this.obtenerVisitas();
@@ -194,10 +156,10 @@ class VisitasApp {
                     window.electronAPI.showDialog(`Salida registrada para ${nombre}`);
                 }
             } else {
-                this.showMessage(` Error: ${data.error}`, 'error');
+                this.showMessage(`❌ Error: ${data.error}`, 'error');
             }
         } catch (error) {
-            this.showMessage(' Error de conexión con el servidor', 'error');
+            this.showMessage('❌ Error de conexión con el servidor', 'error');
         } finally {
             this.showLoading(false);
         }
@@ -213,10 +175,10 @@ class VisitasApp {
             if (response.ok) {
                 this.mostrarVisitas(data.data);
             } else {
-                this.showMessage(' Error al obtener visitas', 'error');
+                this.showMessage('❌ Error al obtener visitas', 'error');
             }
         } catch (error) {
-            this.showMessage(' Error de conexión con el servidor', 'error');
+            this.showMessage('❌ Error de conexión con el servidor', 'error');
         } finally {
             this.showLoading(false);
         }
@@ -239,10 +201,10 @@ class VisitasApp {
             if (response.ok) {
                 this.mostrarVisitaIndividual(data.data);
             } else {
-                this.showMessage(` ${data.error}`, 'error');
+                this.showMessage(`❌ ${data.error}`, 'error');
             }
         } catch (error) {
-            this.showMessage(' Error de conexión con el servidor', 'error');
+            this.showMessage('❌ Error de conexión con el servidor', 'error');
         } finally {
             this.showLoading(false);
         }
@@ -251,7 +213,7 @@ class VisitasApp {
     // FUNCIÓN MEJORADA: Ahora incluye botones de salida
     mostrarVisitas(visitas) {
         const resultadoEl = document.getElementById('resultado');
-        
+
         if (!visitas || visitas.length === 0) {
             resultadoEl.innerHTML = '<p>No hay visitas registradas</p>';
             return;
@@ -264,11 +226,11 @@ class VisitasApp {
         let html = `
             <div class="stats">
                 <div class="stat-card">
-                    <h3> Activos</h3>
+                    <h3>🟢 Activos</h3>
                     <span class="stat-number">${visitasActivas.length}</span>
                 </div>
                 <div class="stat-card">
-                    <h3> Completados</h3>
+                    <h3>🟡 Completados</h3>
                     <span class="stat-number">${visitasCompletadas.length}</span>
                 </div>
                 <div class="stat-card">
@@ -280,7 +242,7 @@ class VisitasApp {
 
         // Mostrar visitas activas primero con botones de salida
         if (visitasActivas.length > 0) {
-            html += `<h3> Visitantes Actualmente en la Sede </h3>`;
+            html += `<h3> Visitantes Actualmente en la Sede</h3>`;
             html += visitasActivas.map(visita => `
                 <div class="visita-item visita-activa">
                     <div class="visita-header">
@@ -315,7 +277,7 @@ class VisitasApp {
                         <br>
                         <small> Salida: ${visita.fecha_salida} ${visita.hora_salida}</small>
                         <br>
-                        <small>⏱ Duración: ${this.calcularDuracion(visita.fecha_ingreso, visita.hora_ingreso, visita.fecha_salida, visita.hora_salida)}</small>
+                        <small> Duración: ${this.calcularDuracion(visita.fecha_ingreso, visita.hora_ingreso, visita.fecha_salida, visita.hora_salida)}</small>
                     </div>
                 </div>
             `).join('');
@@ -326,7 +288,7 @@ class VisitasApp {
 
     mostrarVisitaIndividual(visita) {
         const resultadoEl = document.getElementById('resultado');
-        
+
         if (!visita) {
             resultadoEl.innerHTML = '<p>No se encontró el visitante</p>';
             return;
@@ -334,27 +296,185 @@ class VisitasApp {
 
         resultadoEl.innerHTML = `
             <div class="visita-item ${!visita.fecha_salida ? 'visita-activa' : 'visita-completada'}">
-                <h4>Información del Visitante</h4>
+                <h4> Información del Visitante</h4>
                 <div class="visita-header">
                     <strong>${visita.nombre}</strong>
                     <span class="rut">${visita.rut}</span>
                 </div>
                 <div class="visita-info">
                     <p><strong>Fecha de ingreso:</strong> ${visita.fecha_ingreso} ${visita.hora_ingreso}</p>
-                    ${visita.fecha_salida ? 
-                        `<p><strong>Fecha de salida:</strong> ${visita.fecha_salida} ${visita.hora_salida}</p>` : 
-                        `<p><strong>Estado:</strong>  Actualmente en el edificio</p>
+                    ${visita.fecha_salida ?
+                `<p><strong>Fecha de salida:</strong> ${visita.fecha_salida} ${visita.hora_salida}</p>` :
+                `<p><strong>Estado:</strong> 🔵 Actualmente en el edificio</p>
                          <div class="visita-actions">
                             <button class="btn btn-salida" onclick="app.registrarSalidaDirecta('${visita.rut}', '${visita.nombre.replace(/'/g, "\\'")}')">
                                  Registrar Salida
                             </button>
                          </div>`
-                    }
+            }
                     <p><strong>Registrado el:</strong> ${new Date(visita.created_at).toLocaleString()}</p>
                 </div>
             </div>
         `;
     }
+
+    // ===========================================================
+    // FUNCIONES DE REPORTES
+    // ===========================================================
+
+    // Función para listar reportes existentes
+    async listarReportes() {
+        this.showLoading(true);
+
+        try {
+            const response = await fetch(`${API_BASE}/reportes`);
+            const data = await response.json();
+
+            if (response.ok) {
+                this.mostrarReportes(data.reportes);
+            } else {
+                this.showMessage('❌ Error al cargar reportes', 'error');
+            }
+        } catch (error) {
+            this.showMessage('❌ Error de conexión al cargar reportes', 'error');
+        } finally {
+            this.showLoading(false);
+        }
+    }
+
+    // Función para mostrar la lista de reportes
+    mostrarReportes(reportes) {
+        const resultadoEl = document.getElementById('resultado');
+        
+        if (!reportes || reportes.length === 0) {
+            resultadoEl.innerHTML = '<p>No hay reportes generados.</p>';
+            return;
+        }
+
+        let html = `
+            <div class="reportes-container">
+                <h3> Reportes Generados (${reportes.length})</h3>
+                <div class="reportes-list">
+        `;
+
+        html += reportes.map(reporte => `
+            <div class="reporte-item">
+                <div class="reporte-info">
+                    <strong>${reporte.nombre}</strong>
+                    <div class="reporte-detalles">
+                        <small> Tamaño: ${(reporte.tamaño / 1024).toFixed(2)} KB</small>
+                        <small> Generado: ${new Date(reporte.fechaModificacion).toLocaleString()}</small>
+                    </div>
+                </div>
+                <div class="reporte-actions">
+                    <button class="btn btn-descargar" onclick="app.descargarReporte('${reporte.nombre}')">
+                        📥 Descargar
+                    </button>
+                    <button class="btn btn-eliminar" onclick="app.eliminarReporte('${reporte.nombre}')">
+                        🗑️ Eliminar
+                    </button>
+                </div>
+            </div>
+        `).join('');
+
+        html += `
+                </div>
+            </div>
+        `;
+
+        resultadoEl.innerHTML = html;
+    }
+
+    // Función para descargar reportes
+    async descargarReporte(nombreArchivo) {
+        try {
+            const response = await fetch(`${API_BASE}/descargar-reporte/${encodeURIComponent(nombreArchivo)}`);
+            
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = nombreArchivo;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                
+                this.showMessage(`✅ Reporte "${nombreArchivo}" descargado`, 'success');
+            } else {
+                this.showMessage('❌ Error al descargar el reporte', 'error');
+            }
+        } catch (error) {
+            console.error('Error al descargar:', error);
+            this.showMessage('❌ Error al descargar el reporte', 'error');
+        }
+    }
+
+    // Función para eliminar reportes
+    async eliminarReporte(nombreArchivo) {
+        if (!confirm(`¿Estás seguro de eliminar el reporte "${nombreArchivo}"?`)) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_BASE}/eliminar-reporte/${encodeURIComponent(nombreArchivo)}`, {
+                method: 'DELETE'
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                this.showMessage(`✅ Reporte "${nombreArchivo}" eliminado`, 'success');
+                // Recargar la lista de reportes
+                setTimeout(() => {
+                    this.listarReportes();
+                }, 1000);
+            } else {
+                this.showMessage(`❌ Error: ${data.error}`, 'error');
+            }
+        } catch (error) {
+            this.showMessage('❌ Error de conexión', 'error');
+        }
+    }
+
+    // Función para generar reporte
+    async generarReporte() {
+        if (!confirm('¿Generar reporte diario y reiniciar la base de datos?\n\nEsta acción exportará todos los registros actuales y limpiará la base de datos.')) {
+            return;
+        }
+
+        this.showLoading(true);
+
+        try {
+            const response = await fetch(`${API_BASE}/generar-reporte`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" }
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                this.showMessage(`✅ ${data.message} (${data.registros || 0} registros exportados)`, 'success');
+                
+                // Recargar automáticamente la lista de visitas (estará vacía)
+                setTimeout(() => {
+                    this.obtenerVisitas();
+                }, 2000);
+            } else {
+                this.showMessage(`❌ ${data.error}`, 'error');
+            }
+        } catch (error) {
+            this.showMessage('❌ Error de conexión con el servidor', 'error');
+            console.error("Error al generar reporte:", error);
+        } finally {
+            this.showLoading(false);
+        }
+    }
+
+    // ===========================================================
+    // FUNCIONES UTILITARIAS
+    // ===========================================================
 
     // Función para calcular tiempo transcurrido
     calcularTiempo(fecha, hora) {
@@ -418,17 +538,16 @@ class VisitasApp {
         }, 5000);
     }
 
-    //Parte del scanner, por ahora código de pruebas hasta tener pistola
+    // Parte del scanner, por ahora código de pruebas hasta tener pistola
     setupScannerInput() {
         let buffer = '';
         let lastTime = Date.now();
-        
+
         document.addEventListener('keydown', (e) => {
             const now = Date.now();
             const diff = now - lastTime;
 
-            //Tiempo entre pulsaciones, si es mayor a 100ms se considera un nuevo input
-
+            // Tiempo entre pulsaciones, si es mayor a 100ms se considera un nuevo input
             if (diff > 100) buffer = '';
             lastTime = now;
 

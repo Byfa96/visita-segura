@@ -100,14 +100,25 @@ input:focus {
 }
 
 .btn-secondary {
-    background: #ea6666;
+    background: #667eea;
     color: white;
 }
 
 .btn-secondary:hover {
-    background: #ea6666;
+    background: #667eea;
     transform: translateY(-2px);
 }
+
+.btn-success {
+    background: #ffcc00;
+    color: rgb(5, 5, 5);
+}
+
+.btn-success:hover {
+    background: #ffcc00;
+    transform: translateY(-2px);
+}
+
 
 .btn-info {
     background: #667eea;
@@ -307,4 +318,64 @@ footer {
     background: linear-gradient(to right, var(--duoc-amarillo, #ffcc00) 50%, #000000 50%);
     border-bottom: 2px solid var(--duoc-gris-borde, #e0e0e0);
     box-sizing: border-box;
+}
+
+/* Estilos para la lista de reportes */
+.reportes-list {
+    margin-top: 15px;
+}
+
+.reporte-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    background: #f7fafc;
+}
+
+.reporte-info {
+    flex: 1;
+}
+
+.reporte-detalles {
+    margin-top: 5px;
+}
+
+.reporte-detalles small {
+    display: block;
+    color: #718096;
+    margin: 2px 0;
+}
+
+.btn-descargar {
+    background: #38a169;
+    color: white;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9em;
+}
+
+.btn-descargar:hover {
+    background: #2f855a;
+}
+
+.mensaje-exito {
+    background: #c6f6d5;
+    color: #22543d;
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid #9ae6b4;
+}
+
+.mensaje-error {
+    background: #fed7d7;
+    color: #742a2a;
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid #feb2b2;
 }
