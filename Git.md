@@ -90,3 +90,12 @@ Digamos que estamos trabajando en una nueva característica llamada "Actualizaci
 
 
 Eso sería por ahora.
+
+
+
+# Crear certificados SSL autofirmados para desarrollo local
+----------------
+
+- Crear archivos pem con mkcert y meterlos en la carpeta certs/
+
+- Cambiar nombres de los archivos .pem dentro de app.js.

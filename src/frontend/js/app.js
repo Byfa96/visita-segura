@@ -29,6 +29,16 @@ class VisitasApp {
             this.listarReportes();
         });
 
+        // Escáner móvil
+        const btnScanner = document.getElementById('btnScanner');
+        if (btnScanner) {
+            btnScanner.addEventListener('click', () => {
+                this.mostrarScannerInfo();
+            });
+            // Iniciar polling pasivo para captar QR si aparece
+            this.iniciarPollingScan();
+        }
+
         // Generar reporte
         document.getElementById('btnReporte').addEventListener('click', () => {
             this.generarReporte();
@@ -58,6 +68,53 @@ class VisitasApp {
                 }
             });
         }
+    }
+
+    async mostrarScannerInfo() {
+        try {
+            const resp = await fetch(`${API_BASE}/scanner-info`);
+            const data = await resp.json();
+            const resultadoEl = document.getElementById('resultado');
+            const urls = (data.urls || []).map(u => `<li><code>${u}</code></li>`).join('') || '<li>No se detectaron IPs locales</li>';
+            resultadoEl.innerHTML = `
+            <div class="card-inner">
+              <h3> Escáner Móvil</h3>
+              <p>1. Conecta el celular a la misma red WiFi que este equipo.</p>
+              <p>2. Abre una de estas URLs en el navegador del celular:</p>
+              <ul>${urls}</ul>
+              <p>3. Pulsa "Iniciar" y apunta al QR del carnet.</p>
+              <p>El RUT/identificador se autocompletará aquí si el QR trae ese dato.</p>
+            </div>`;
+        } catch (e) {
+            this.showMessage('No se pudo obtener info del escáner', 'error');
+        }
+    }
+
+    iniciarPollingScan() {
+        // Poll cada 2s por un máximo razonable (se mantiene mientras la app corre)
+        setInterval(async () => {
+            try {
+                const resp = await fetch(`${API_BASE}/last-scan`);
+                const data = await resp.json();
+                if (data && data.data) {
+                    // Heurística: si parece un RUT (contiene guión y dígitos) lo ponemos directamente
+                    const contenido = data.data.trim();
+                    const rutInput = document.getElementById('rut');
+                    if (contenido.match(/\d{5,8}-[\dkK]/)) {
+                        rutInput.value = contenido;
+                        rutInput.focus();
+                    } else {
+                        // Si no es rut, lo dejamos en nombre si está vacío y tiene espacios
+                        const nombreInput = document.getElementById('nombre');
+                        if (!nombreInput.value && contenido.split(' ').length >= 2 && contenido.length < 80) {
+                            nombreInput.value = contenido;
+                        }
+                    }
+                }
+            } catch (e) {
+                // Silencioso
+            }
+        }, 2000);
     }
 
     async checkConnection() {
