@@ -33,6 +33,28 @@ app.get('/health', (req, res) => {
 });
 
 /* ===========================================================
+    RUTA INFO SCANNER (URLS de acceso)
+   =========================================================== */
+app.get('/api/scanner-info', (req, res) => {
+  try {
+    const os = require('os');
+    const nets = os.networkInterfaces();
+    const urls = [];
+    for (const name of Object.keys(nets)) {
+      for (const net of nets[name] || []) {
+        if (net.family === 'IPv4' && !net.internal) {
+          urls.push(`http://${net.address}:${PORT}/scanner`);
+          urls.push(`https://${net.address}:${SSL_PORT}/scanner`);
+        }
+      }
+    }
+    res.json({ urls });
+  } catch (e) {
+    res.json({ urls: [] });
+  }
+});
+
+/* ===========================================================
     RUTA MANUAL PARA GENERAR REPORTE Y REINICIAR BASE DE DATOS
    =========================================================== */
 app.post('/api/generar-reporte', async (req, res) => {
@@ -139,6 +161,54 @@ async function generarReporteDiario() {
   });
 }
 
+/* ===========================================================
+    EXPIRACIÓN AUTOMÁTICA DE VISITAS (6h)
+   =========================================================== */
+let lastExpireRun = null;
+async function marcarExpirados(horas = 6) {
+  const db = database.db;
+  if (!db) return;
+  const ahora = new Date();
+  const limiteMs = horas * 60 * 60 * 1000;
+
+  db.all("SELECT id, visita_id, rut, nombre, fecha_ingreso, hora_ingreso, estado FROM visitantes WHERE fecha_salida IS NULL AND (estado IS NULL OR estado <> 'expirado')", (err, rows) => {
+    if (err || !rows || rows.length === 0) {
+      lastExpireRun = { time: ahora, updated: 0 };
+      return;
+    }
+    let updated = 0;
+    const updateStmt = db.prepare("UPDATE visitantes SET estado = 'expirado' WHERE id = ?");
+    const updateVisitStmt = db.prepare("UPDATE visitas SET estado = 'expirado' WHERE id = ?");
+    for (const r of rows) {
+      const ingreso = new Date(`${r.fecha_ingreso}T${r.hora_ingreso}`);
+      if (ahora - ingreso >= limiteMs) {
+        updateStmt.run([r.id]);
+        if (r.visita_id) updateVisitStmt.run([r.visita_id]);
+        updated++;
+      }
+    }
+    updateStmt.finalize();
+    updateVisitStmt.finalize();
+    lastExpireRun = { time: ahora, updated };
+    if (updated > 0) {
+      console.log(` Expiración automática: ${updated} visita(s) marcadas como expiradas (> ${horas}h).`);
+    }
+  });
+}
+
+// Ejecutar cada 10 minutos
+cron.schedule('*/10 * * * *', () => marcarExpirados(6));
+
+// Endpoint para revisar expirados actuales
+app.get('/api/expirados', (req, res) => {
+  const db = database.db;
+  if (!db) return res.json({ total: 0, data: [] });
+  db.all("SELECT * FROM visitantes WHERE fecha_salida IS NULL AND estado = 'expirado' ORDER BY created_at DESC", (err, rows) => {
+    if (err) return res.json({ total: 0, data: [] });
+    res.json({ total: rows.length, data: rows, lastRun: lastExpireRun });
+  });
+});
+
 // Se ejecuta cada medianoche
 cron.schedule('0 0 * * *', () => {
   console.log(' Ejecutando tarea programada (reporte diario)...');
@@ -185,6 +255,9 @@ async function startServer() {
         break;
       }
     }
+
+    // Primera ejecución de expiración al iniciar
+    marcarExpirados(6);
   } catch (error) {
     console.error('Error al iniciar el servidor:', error);
     process.exit(1);

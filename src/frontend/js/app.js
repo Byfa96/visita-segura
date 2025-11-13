@@ -39,6 +39,9 @@ class VisitasApp {
             this.iniciarPollingScan();
         }
 
+        // Aviso por visitas expiradas cada 60s
+        setInterval(() => this.checkExpirados(), 60000);
+
         // Generar reporte
         document.getElementById('btnReporte').addEventListener('click', () => {
             this.generarReporte();
@@ -115,6 +118,18 @@ class VisitasApp {
                 // Silencioso
             }
         }, 2000);
+    }
+
+    async checkExpirados() {
+        try {
+            const resp = await fetch(`${API_BASE}/expirados`);
+            const data = await resp.json();
+            if (data && data.total > 0) {
+                this.showMessage(`⚠️ ${data.total} visita(s) expiradas (más de 6h sin salida).`, 'error');
+            }
+        } catch (e) {
+            // silencioso
+        }
     }
 
     async checkConnection() {
@@ -277,7 +292,8 @@ class VisitasApp {
         }
 
         // Separar visitas activas y completadas
-        const visitasActivas = visitas.filter(v => !v.fecha_salida);
+    const visitasActivas = visitas.filter(v => !v.fecha_salida);
+    const visitasExpiradas = visitasActivas.filter(v => v.estado === 'expirado');
         const visitasCompletadas = visitas.filter(v => v.fecha_salida);
 
         let html = `
@@ -289,6 +305,10 @@ class VisitasApp {
                 <div class="stat-card">
                     <h3>🟡 Completados</h3>
                     <span class="stat-number">${visitasCompletadas.length}</span>
+                </div>
+                <div class="stat-card">
+                    <h3>⚠️ Expirados</h3>
+                    <span class="stat-number">${visitasExpiradas.length}</span>
                 </div>
                 <div class="stat-card">
                     <h3> Total</h3>
@@ -305,6 +325,7 @@ class VisitasApp {
                     <div class="visita-header">
                         <strong>${visita.nombre}</strong>
                         <span class="rut">${visita.rut}</span>
+                        ${visita.estado === 'expirado' ? '<span class="badge" style="margin-left:8px;color:#ff9800">EXPIRADO</span>' : ''}
                     </div>
                     <div class="visita-info">
                         <small> Ingreso: ${visita.fecha_ingreso} ${visita.hora_ingreso}</small>

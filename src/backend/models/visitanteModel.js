@@ -67,12 +67,12 @@ class VisitanteModel {
     return new Promise((resolve, reject) => {
       const sql = `
         UPDATE visitantes 
-        SET fecha_salida = ?, hora_salida = ? 
+        SET fecha_salida = ?, hora_salida = ?, estado = 'completado' 
         WHERE rut = ? AND fecha_salida IS NULL
       `;
 
 
-      database.db.run(sql, [fechaSalida, horaSalida, rut], function(err) {
+  database.db.run(sql, [fechaSalida, horaSalida, rut], function(err) {
         if (err) {
           reject(err);
         } else {
