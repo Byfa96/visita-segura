@@ -98,4 +98,12 @@ Eso sería por ahora.
 
 - Crear archivos pem con mkcert y meterlos en la carpeta certs/
 
+Flujo:
+- Instalar mkcert:
+    - Windows: choco install mkcert
+
+mkcert -install
+mkcert ip user localhost
+
+
 - Cambiar nombres de los archivos .pem dentro de app.js.
