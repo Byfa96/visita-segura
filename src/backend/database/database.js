@@ -1,5 +1,6 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const os = require('os');
 
 
 const DB_PATH = path.join(__dirname, '../visitas.db');
@@ -43,6 +44,7 @@ class Database {
             hora_ingreso TEXT NOT NULL,
             fecha_salida TEXT,
             hora_salida TEXT,
+            registrado_por TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
           )`,
 
@@ -72,6 +74,7 @@ class Database {
             hora_salida TEXT,
             area_id INTEGER,
             estado TEXT,
+            registrado_por TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (persona_id) REFERENCES personas(id),
             FOREIGN KEY (area_id) REFERENCES areas(id)
@@ -82,6 +85,8 @@ class Database {
           `ALTER TABLE visitas ADD COLUMN area_id INTEGER`,
           `ALTER TABLE visitantes ADD COLUMN estado TEXT DEFAULT 'activo'`,
           `ALTER TABLE visitas ADD COLUMN estado TEXT`,
+          `ALTER TABLE visitantes ADD COLUMN registrado_por TEXT`,
+          `ALTER TABLE visitas ADD COLUMN registrado_por TEXT`,
 
           // Índices útiles para rendimiento
           `CREATE INDEX IF NOT EXISTS idx_visitas_persona_fecha ON visitas(persona_id, fecha_ingreso, hora_ingreso)`,
@@ -148,6 +153,16 @@ class Database {
               SET estado = NEW.estado
             WHERE id = NEW.visita_id;
           END`,
+
+          // Trigger: propagar registrado_por
+          `CREATE TRIGGER IF NOT EXISTS trg_visitantes_au_registrado
+            AFTER UPDATE OF registrado_por ON visitantes
+            WHEN NEW.registrado_por IS NOT OLD.registrado_por
+          BEGIN
+            UPDATE visitas
+              SET registrado_por = NEW.registrado_por
+            WHERE id = NEW.visita_id;
+          END`,
         ];
 
         const runStatement = (idx = 0) => {
@@ -198,8 +213,8 @@ class Database {
              ON CONFLICT(rut) DO UPDATE SET nombre=excluded.nombre`
           );
           const insertVisita = this.db.prepare(
-            `INSERT INTO visitas(persona_id, fecha_ingreso, hora_ingreso, fecha_salida, hora_salida, area_id, estado)
-             VALUES ((SELECT id FROM personas WHERE rut = ?), ?, ?, ?, ?, ?, ?)`
+            `INSERT INTO visitas(persona_id, fecha_ingreso, hora_ingreso, fecha_salida, hora_salida, area_id, estado, registrado_por)
+             VALUES ((SELECT id FROM personas WHERE rut = ?), ?, ?, ?, ?, ?, ?, ?)`
           );
           const updateVisitante = this.db.prepare(
             `UPDATE visitantes SET visita_id = (SELECT id FROM visitas WHERE persona_id = (SELECT id FROM personas WHERE rut = ?) AND fecha_ingreso = ? AND hora_ingreso = ? ORDER BY id DESC LIMIT 1)
@@ -208,7 +223,7 @@ class Database {
 
           for (const r of rows) {
             upsertPersona.run([r.rut, r.nombre]);
-            insertVisita.run([r.rut, r.fecha_ingreso, r.hora_ingreso, r.fecha_salida || null, r.hora_salida || null, r.area_id || null, r.estado || 'activo']);
+            insertVisita.run([r.rut, r.fecha_ingreso, r.hora_ingreso, r.fecha_salida || null, r.hora_salida || null, r.area_id || null, r.estado || 'activo', r.registrado_por || null]);
             updateVisitante.run([r.rut, r.fecha_ingreso, r.hora_ingreso, r.id]);
           }
 

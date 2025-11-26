@@ -10,6 +10,7 @@ class VisitanteModel {
 
     return new Promise((resolve, reject) => {
       const db = database.db;
+      const registradoPor = process.env.USERNAME || process.env.USER || require('os').userInfo().username || null;
 
       const ensureAreaId = (cb) => {
         if (area_id != null) return cb(null, area_id);
@@ -28,9 +29,9 @@ class VisitanteModel {
       ensureAreaId((areaErr, areaIdFinal) => {
         if (areaErr) return reject(areaErr);
 
-        const cols = ['rut', 'nombre', 'fecha_ingreso', 'hora_ingreso'];
-        const placeholders = ['?', '?', '?', '?'];
-        const params = [rut, nombre, fechaIngreso, horaIngreso];
+        const cols = ['rut', 'nombre', 'fecha_ingreso', 'hora_ingreso', 'registrado_por'];
+        const placeholders = ['?', '?', '?', '?', '?'];
+        const params = [rut, nombre, fechaIngreso, horaIngreso, registradoPor];
         if (areaIdFinal != null) {
           cols.push('area_id');
           placeholders.push('?');
@@ -49,7 +50,8 @@ class VisitanteModel {
             nombre,
             fecha_ingreso: fechaIngreso,
             hora_ingreso: horaIngreso,
-            area_id: areaIdFinal || null
+            area_id: areaIdFinal || null,
+            registrado_por: registradoPor
           });
         }
         });
