@@ -22,6 +22,37 @@ app.use('/scanner', express.static(path.join(__dirname, 'public', 'scanner')));
 
 // Rutas principales
 app.use('/api', visitantesRoutes);
+// Landing simple para GET /
+app.get('/', (req, res) => {
+  res.type('html').send(`
+    <!doctype html>
+    <html lang="es">
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Visita Segura · Backend</title>
+        <style>
+          body{font-family:system-ui,Arial,sans-serif;margin:0;padding:24px;background:#0b1220;color:#e6e9ef}
+          .card{background:#131a2a;border:1px solid #2a3550;border-radius:12px;padding:16px;max-width:800px;margin:0 auto}
+          a{color:#9db1ff;text-decoration:none}
+          ul{line-height:1.8}
+        </style>
+      </head>
+      <body>
+        <div class="card">
+          <h2>Visita Segura · Backend</h2>
+          <p>Enlaces útiles:</p>
+          <ul>
+            <li><a href="/health">/health</a> (estado)</li>
+            <li><a href="/scanner">/scanner</a> (escáner móvil)</li>
+            <li><a href="/api/visitas">/api/visitas</a> (lista de visitas)</li>
+            <li><a href="/api/reportes">/api/reportes</a> (lista de reportes)</li>
+          </ul>
+        </div>
+      </body>
+    </html>
+  `);
+});
 
 // Health check
 app.get('/health', (req, res) => {
