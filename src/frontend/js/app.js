@@ -136,10 +136,22 @@ class VisitasApp {
         try {
             const response = await fetch(`${API_BASE.replace('/api', '')}/health`);
             if (response.ok) {
-                this.updateStatus('Conectado ✅', 'success');
+                // Obtener usuario del sistema
+                try {
+                    const who = await fetch(`${API_BASE}/whoami`).then(r => r.json());
+                    if (who && who.user) {
+                        this.updateStatus(`Usuario: ${who.user}`, 'success');
+                    } else {
+                        this.updateStatus('Usuario: desconocido', 'success');
+                    }
+                } catch {
+                    this.updateStatus('Usuario: desconocido', 'success');
+                }
+            } else {
+                this.updateStatus('Sin conexión', 'error');
             }
         } catch (error) {
-            this.updateStatus('Error de conexión ❌', 'error');
+            this.updateStatus('Sin conexión', 'error');
         }
     }
 

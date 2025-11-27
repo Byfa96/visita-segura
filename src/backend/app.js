@@ -33,6 +33,20 @@ app.get('/health', (req, res) => {
 });
 
 /* ===========================================================
+    RUTA QUIÉN SOY (usuario del sistema)
+   =========================================================== */
+app.get('/api/whoami', (req, res) => {
+  try {
+    const os = require('os');
+    const user = process.env.USERNAME || process.env.USER || os.userInfo().username || 'desconocido';
+    const hostname = os.hostname();
+    res.json({ user, hostname });
+  } catch (e) {
+    res.json({ user: 'desconocido' });
+  }
+});
+
+/* ===========================================================
     RUTA INFO SCANNER (URLS de acceso)
    =========================================================== */
 app.get('/api/scanner-info', (req, res) => {
