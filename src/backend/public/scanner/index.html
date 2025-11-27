@@ -4,28 +4,13 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Escáner QR - Visita Segura</title>
-  <style>
-    body { font-family: system-ui, Arial, sans-serif; margin: 0; padding: 16px; background:#0b1220; color:#e6e9ef; }
-    header { margin-bottom: 12px; }
-    .hint { font-size: 0.9rem; opacity: .8; }
-    .card { background: #131a2a; border-radius: 10px; padding: 12px; margin-bottom: 14px; }
-    video { width: 100%; max-height: 60vh; background:#000; border-radius:10px; }
-    .row { display: flex; gap: 8px; flex-wrap: wrap; }
-    select, input, button { padding: 10px; border-radius:8px; border:1px solid #2a3550; background:#0f1624; color:#e6e9ef; }
-    button { cursor: pointer; border:1px solid #3652f3; background:#3652f3; }
-    button.secondary { border-color:#2a3550; background:#1a2338; }
-    label { display:block; margin:6px 0 6px; font-size:.95rem; }
-    .ok { color:#00d084; }
-    .err { color:#ff6b6b; }
-    .small { font-size: .85rem; opacity: .85; }
-    .grid { display:grid; grid-template-columns: 1fr; gap:10px; }
-  </style>
+  <link rel="stylesheet" href="./scanner.css" />
   <script src="https://unpkg.com/@zxing/library@0.21.3"></script>
 </head>
 <body>
   <header>
-    <h2>Escáner QR - Visita Segura</h2>
-    <p class="hint">Conéctate a la misma red Wi‑Fi. En tu celular abre: http://IP_DE_TU_PC:3000/scanner</p>
+    <h2>Escáner QR · Visita Segura</h2>
+    <p class="hint">Conéctate a la misma red Wi‑Fi y abre la URL de escaneo.</p>
   </header>
 
   <section class="card">
