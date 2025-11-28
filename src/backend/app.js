@@ -134,19 +134,11 @@ app.post('/api/generar-reporte', async (req, res) => {
       fs.writeFileSync(reportePath, csv, 'utf8');
       console.log(` Reporte manual generado: ${reportePath}`);
 
-      // Vaciar la base de datos
-      db.run("DELETE FROM visitantes", (err) => {
-        if (err) {
-          console.error('Error al vaciar la tabla:', err);
-          return res.status(500).json({ error: 'Error al vaciar la base de datos' });
-        }
-
-        console.log(' Base de datos reiniciada después del reporte.');
-        res.status(200).json({
-          message: 'Reporte generado y base de datos reiniciada correctamente.',
-          archivo: path.basename(reportePath),
-          registros: rows.length
-        });
+      // Reinicio histórico legacy eliminado: opcionalmente purgar visitas completadas (aquí se mantiene historial, no se borra)
+      res.status(200).json({
+        message: 'Reporte generado (historial conservado).',
+        archivo: path.basename(reportePath),
+        registros: rows.length
       });
     });
   } catch (error) {
@@ -196,13 +188,7 @@ async function generarReporteDiario() {
     console.log(` Reporte diario generado: ${reportePath}`);
     console.log(` Registros exportados: ${rows.length}`);
 
-    db.run("DELETE FROM visitantes", (err) => {
-      if (err) {
-        console.error(' Error al vaciar la tabla:', err);
-      } else {
-        console.log(' Base de datos reiniciada después del reporte diario.');
-      }
-    });
+    // Ya no se borra el historial tras generar reporte diario.
   });
 }
 
@@ -216,23 +202,20 @@ async function marcarExpirados(horas = 6) {
   const ahora = new Date();
   const limiteMs = horas * 60 * 60 * 1000;
 
-  db.all("SELECT id, visita_id, rut, nombre, fecha_ingreso, hora_ingreso, estado FROM visitantes WHERE fecha_salida IS NULL AND (estado IS NULL OR estado <> 'expirado')", (err, rows) => {
+    db.all("SELECT id, rut, nombre, fecha_ingreso, hora_ingreso, estado FROM visitantes WHERE fecha_salida IS NULL AND (estado IS NULL OR estado <> 'expirado')", (err, rows) => {
     if (err || !rows || rows.length === 0) {
       lastExpireRun = { time: ahora, updated: 0 };
       return;
     }
     let updated = 0;
-    const updateStmt = db.prepare("UPDATE visitantes SET estado = 'expirado' WHERE id = ?");
     const updateVisitStmt = db.prepare("UPDATE visitas SET estado = 'expirado' WHERE id = ?");
     for (const r of rows) {
       const ingreso = new Date(`${r.fecha_ingreso}T${r.hora_ingreso}`);
       if (ahora - ingreso >= limiteMs) {
-        updateStmt.run([r.id]);
-        if (r.visita_id) updateVisitStmt.run([r.visita_id]);
+        updateVisitStmt.run([r.id]);
         updated++;
       }
     }
-    updateStmt.finalize();
     updateVisitStmt.finalize();
     lastExpireRun = { time: ahora, updated };
     if (updated > 0) {
