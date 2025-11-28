@@ -167,8 +167,8 @@ class Database {
               if (
                 msg.includes('duplicate column name') ||
                 msg.includes('already exists') ||
-                msg.includes('no such table: visitantes') || // rename cuando no existe
-                msg.includes('view visitantes may not be altered') // ya es VIEW, no se puede renombrar/alterar
+                msg.includes('no such table: visitantes') ||
+                msg.includes('view visitantes may not be altered')
               ) {
               
                 runStatement(idx + 1);
