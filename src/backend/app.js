@@ -297,7 +297,7 @@ async function startServer() {
     const candidates = [
       { key: 'key.pem', cert: 'cert.pem' },
       // mkcert con IP/host en nombre
-      { key: '192.168.1.2+2-key.pem', cert: '192.168.1.2+2.pem' },
+      { key: '192.168.1.7+2-key.pem', cert: '192.168.1.7+2.pem' },
     ];
 
     for (const c of candidates) {
