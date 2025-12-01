@@ -10,6 +10,8 @@ class VisitasApp {
 
     init() {
         console.log(' Aplicación de Registro de Visitas iniciada');
+        // Cargar áreas al iniciar
+        this.cargarAreas();
     }
 
     setupEventListeners() {
@@ -168,8 +170,9 @@ class VisitasApp {
     async registrarIngreso() {
         const rut = document.getElementById('rut').value.trim();
         const nombre = document.getElementById('nombre').value.trim();
+        const areaSel = document.getElementById('areaSelect').value;
 
-        if (!rut || !nombre) {
+        if (!rut || !nombre || !areaSel) {
             this.showMessage('Por favor complete todos los campos', 'error');
             return;
         }
@@ -182,7 +185,7 @@ class VisitasApp {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ rut, nombre })
+                body: JSON.stringify({ rut, nombre, area_id: Number(areaSel) })
             });
 
             const data = await response.json();
@@ -190,6 +193,9 @@ class VisitasApp {
             if (response.ok) {
                 this.showMessage(`✅ Ingreso registrado: ${nombre} (${rut})`, 'success');
                 document.getElementById('formIngreso').reset();
+                // Resetear select
+                const sel = document.getElementById('areaSelect');
+                if (sel) sel.selectedIndex = 0;
 
                 // Recargar automáticamente la lista de visitas
                 setTimeout(() => {
@@ -206,6 +212,25 @@ class VisitasApp {
             this.showMessage('❌ Error de conexión con el servidor', 'error');
         } finally {
             this.showLoading(false);
+        }
+    }
+
+    // Poblar selector de áreas
+    async cargarAreas() {
+        try {
+            const resp = await fetch(`${API_BASE}/areas`);
+            const data = await resp.json();
+            const sel = document.getElementById('areaSelect');
+            if (!sel) return;
+            sel.innerHTML = '<option value="" disabled selected>Seleccione un área</option>';
+            (data.data || []).forEach(a => {
+                const opt = document.createElement('option');
+                opt.value = a.id;
+                opt.textContent = a.nombre;
+                sel.appendChild(opt);
+            });
+        } catch (e) {
+            // Silencioso
         }
     }
 

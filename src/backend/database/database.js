@@ -95,6 +95,13 @@ class Database {
             ('activo','Visita activa'),
             ('completado','Visita completada'),
             ('expirado','Visita expirada')`,
+          // Sembrar áreas genéricas de la institución
+          `INSERT OR IGNORE INTO areas(nombre, descripcion) VALUES
+            ('Biblioteca','Área de biblioteca'),
+            ('Laboratorios','Laboratorios de computación/ingeniería'),
+            ('Administración','Oficinas administrativas'),
+            ('Cafetería','Zona de alimentos'),
+            ('Seguridad','Oficina de seguridad')`,
 
    
           `DROP TRIGGER IF EXISTS trg_visitas_ai_normalize`,

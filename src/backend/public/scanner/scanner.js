@@ -8,7 +8,7 @@
   const rawEl = document.getElementById('raw');
   const rutEl = document.getElementById('rut');
   const nombreEl = document.getElementById('nombre');
-  const areaEl = document.getElementById('area');
+  const areaSelect = document.getElementById('areaSelect');
   const btnRegistrar = document.getElementById('btnRegistrar');
   const btnLimpiar = document.getElementById('btnLimpiar');
   const msgEl = document.getElementById('msg');
@@ -89,6 +89,22 @@
     }
   }
 
+  async function loadAreas() {
+    try {
+      const resp = await fetch('/api/areas');
+      const data = await resp.json();
+      const sel = areaSelect;
+      if (!sel) return;
+      sel.innerHTML = '<option value="" disabled selected>Seleccione un área</option>';
+      (data.data || []).forEach(a => {
+        const opt = document.createElement('option');
+        opt.value = a.id;
+        opt.textContent = a.nombre;
+        sel.appendChild(opt);
+      });
+    } catch (_) {}
+  }
+
   async function start() {
     if (scanning) return;
     try {
@@ -132,7 +148,7 @@
               fetch('/api/scan-update', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ raw: text, rut: rut || '', nombre: nombre || nombreEl.value || '', area: areaEl.value || '' })
+                body: JSON.stringify({ raw: text, rut: rut || '', nombre: nombre || nombreEl.value || '', area: '' })
               }).catch(()=>{});
             } catch (_) {}
           }
@@ -177,7 +193,7 @@
     msgEl.className = 'small';
     const rut = rutEl.value.trim();
     const nombre = nombreEl.value.trim();
-    const area = areaEl.value.trim();
+    const areaId = areaSelect.value;
 
     if (!rut || !nombre) {
       msgEl.textContent = 'RUT y nombre son obligatorios';
@@ -189,7 +205,7 @@
       const res = await fetch('/api/ingreso', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(area ? { rut, nombre, area } : { rut, nombre })
+        body: JSON.stringify((areaId ? { rut, nombre, area_id: Number(areaId) } : { rut, nombre }))
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Error desconocido');
@@ -233,5 +249,6 @@
     }
   } else {
     listCameras().catch(()=>{});
+    loadAreas().catch(()=>{});
   }
 })();
