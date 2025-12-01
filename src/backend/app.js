@@ -13,6 +13,9 @@ const app = express();
 const PORT = 3000;
 const SSL_PORT = 3443;
 
+// Estado en memoria para último scan del escáner móvil
+let lastScan = null;
+
 // Middleware
 app.use(cors());
 app.use(express.json());
@@ -97,6 +100,39 @@ app.get('/api/scanner-info', (req, res) => {
   } catch (e) {
     res.json({ urls: [] });
   }
+});
+
+/* ===========================================================
+   SINCRONIZACIÓN SCANNER → ESCRITORIO (staging en memoria)
+   =========================================================== */
+app.post('/api/scan-update', (req, res) => {
+  try {
+    const { raw = '', rut = '', nombre = '', area = '' } = req.body || {};
+    lastScan = {
+      raw: typeof raw === 'string' ? raw : '',
+      rut: typeof rut === 'string' ? rut : '',
+      nombre: typeof nombre === 'string' ? nombre : '',
+      area: typeof area === 'string' ? area : '',
+      ts: Date.now()
+    };
+    res.json({ success: true });
+  } catch (e) {
+    res.status(400).json({ success: false, error: 'Formato inválido' });
+  }
+});
+
+app.get('/api/last-scan', (req, res) => {
+  if (!lastScan) return res.json({ data: null });
+  // Compatibilidad con lógica actual (data simple) y campos estructurados
+  const prefer = lastScan.rut || lastScan.nombre || lastScan.raw || '';
+  res.json({
+    data: prefer,
+    raw: lastScan.raw,
+    rut: lastScan.rut,
+    nombre: lastScan.nombre,
+    area: lastScan.area,
+    ts: lastScan.ts
+  });
 });
 
 /* ===========================================================

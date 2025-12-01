@@ -127,6 +127,14 @@
             } else if (!nombreEl.value) {
               setStatus('QR leído. Completa el nombre manualmente (no viene en el QR).', 'ok');
             }
+            // Enviar datos escaneados al backend para autocompletar en escritorio
+            try {
+              fetch('/api/scan-update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ raw: text, rut: rut || '', nombre: nombre || nombreEl.value || '', area: areaEl.value || '' })
+              }).catch(()=>{});
+            } catch (_) {}
           }
         }
       });
