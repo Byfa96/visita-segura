@@ -14,6 +14,13 @@ class VisitantesController {
         });
       }
 
+      // Validar área obligatoria (por nombre o id)
+      if (!(area_id || (typeof area === 'string' && area.trim().length))) {
+        return res.status(400).json({
+          error: 'Debe seleccionar un área para la visita'
+        });
+      }
+
 
   const resultado = await visitanteModel.registrarIngreso(rut, nombre, { area_id, area });
       

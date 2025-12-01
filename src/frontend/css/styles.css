@@ -74,6 +74,42 @@ input {
     transition: border-color 0.3s;
 }
 
+/* Selector de áreas más atractivo */
+select {
+    width: 100%;
+    padding: 12px 40px 12px 12px;
+    border: 2px solid #ddd;
+    border-radius: 10px;
+    font-size: 16px;
+    background: #fff url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="%23667eea" d="M7 10l5 5 5-5z"/></svg>') no-repeat right 10px center;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    transition: border-color 0.3s, box-shadow 0.2s;
+}
+
+select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.25);
+}
+
+.form-group label[for="areaSelect"] {
+    color: #333;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.form-group label[for="areaSelect"]::after {
+    content: "Selecciona dónde irá";
+    font-size: 12px;
+    color: #667eea;
+    background: rgba(102,126,234,0.12);
+    padding: 2px 8px;
+    border-radius: 12px;
+}
+
 input:focus {
     outline: none;
     border-color: #667eea;

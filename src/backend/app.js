@@ -25,6 +25,15 @@ app.use('/scanner', express.static(path.join(__dirname, 'public', 'scanner')));
 
 // Rutas principales
 app.use('/api', visitantesRoutes);
+// Listar áreas disponibles
+app.get('/api/areas', (req, res) => {
+  const db = database.db;
+  if (!db) return res.status(500).json({ error: 'DB no disponible' });
+  db.all('SELECT id, nombre, descripcion FROM areas ORDER BY nombre ASC', (err, rows) => {
+    if (err) return res.status(500).json({ error: 'Error al obtener áreas' });
+    res.json({ success: true, data: rows });
+  });
+});
 // Landing simple para GET /
 app.get('/', (req, res) => {
   res.type('html').send(`
