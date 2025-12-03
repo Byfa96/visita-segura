@@ -155,11 +155,33 @@ class Database {
               v.estado AS estado
             FROM visitas v
             JOIN personas p ON p.id = v.persona_id`
+            ,
+            `CREATE TABLE IF NOT EXISTS app_users (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              username TEXT NOT NULL UNIQUE,
+              password_hash TEXT NOT NULL,
+              role TEXT NOT NULL,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )`
         ];
 
         const runStatement = (idx = 0) => {
           if (idx >= statements.length) {
-          
+            // Sembrar usuarios por defecto si no existen (contraseñas en SHA256)
+            try {
+              const crypto = require('crypto');
+              const seedUsers = [
+                { u: 'admin', p: 'admin123', r: 'admin' },
+                { u: 'guardia', p: 'guardia123', r: 'guardia' }
+              ];
+              seedUsers.forEach(s => {
+                const hash = crypto.createHash('sha256').update(s.p).digest('hex');
+                this.db.run(`INSERT OR IGNORE INTO app_users(username, password_hash, role) VALUES (?, ?, ?)`, [s.u, hash, s.r]);
+              });
+            } catch (e) {
+              // no fatal
+            }
+
             this.#migrateLegacyVisitantes()
               .then(() => this.#backfillNormalization())
               .then(resolve)

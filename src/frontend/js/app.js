@@ -6,12 +6,188 @@ class VisitasApp {
         this.setupEventListeners();
         this.checkConnection();
         this.setupScannerInput();
+        // Estado de sesión
+        this.authToken = null;
+        this.authRole = null;
+        this.authUser = null;
+    }
+
+    // Restaurar sesión si hay token en localStorage
+    async restoreSession() {
+        const token = localStorage.getItem('authToken');
+        if (!token) {
+            this.showLoginModal();
+            return;
+        }
+
+        try {
+            const resp = await fetch(`${API_BASE}/me`, { headers: { 'X-Auth-Token': token } });
+            const data = await resp.json();
+            if (data && data.authenticated) {
+                this.authToken = token;
+                this.authRole = data.role;
+                this.authUser = data.username;
+                this.applyRoleToUI();
+            } else {
+                this.showLoginModal();
+            }
+        } catch (e) {
+            this.showLoginModal();
+        }
+    }
+
+    showChangePassModal() {
+        const m = document.getElementById('changePassModal');
+        if (!m) return;
+        // only admin allowed to change passwords
+        if (this.authRole !== 'admin') return this.showMessage('No autorizado: solo administradores pueden cambiar contraseñas', 'error');
+        m.setAttribute('aria-hidden', 'false');
+        // reset
+        const oldPw = document.getElementById('oldPassword'); if (oldPw) oldPw.value = '';
+        const newPw = document.getElementById('newPassword'); if (newPw) newPw.value = '';
+        const confirmPw = document.getElementById('confirmPassword'); if (confirmPw) confirmPw.value = '';
+
+        // populate users select only for admin
+        const sel = document.getElementById('changeUser');
+        if (!sel) return;
+        sel.innerHTML = '<option value="">(Selecciona usuario)</option>';
+        if (this.authRole === 'admin' && this.authToken) {
+            fetch(`${API_BASE}/users`, { headers: { 'X-Auth-Token': this.authToken } })
+                .then(r => r.json())
+                .then(data => {
+                    if (data && data.users) {
+                        data.users.forEach(u => {
+                            const opt = document.createElement('option');
+                            opt.value = u.username;
+                            opt.textContent = `${u.username} (${u.role})`;
+                            sel.appendChild(opt);
+                        });
+                        // preselect current user
+                        if (this.authUser) sel.value = this.authUser;
+                    }
+                }).catch(()=>{});
+        }
+    }
+
+    closeChangePassModal() {
+        const m = document.getElementById('changePassModal');
+        if (!m) return;
+        m.setAttribute('aria-hidden', 'true');
+    }
+
+    async submitChangePassword() {
+        const sel = document.getElementById('changeUser');
+        const username = sel ? sel.value : '';
+        const newPassword = document.getElementById('newPassword').value || '';
+        const confirmPassword = document.getElementById('confirmPassword').value || '';
+
+        if (!newPassword || newPassword.length < 4) return this.showMessage('La contraseña nueva debe tener al menos 4 caracteres', 'error');
+        if (newPassword !== confirmPassword) return this.showMessage('Las contraseñas no coinciden', 'error');
+
+        // Only admin can change passwords
+        if (this.authRole !== 'admin') return this.showMessage('No autorizado: solo administradores pueden cambiar contraseñas', 'error');
+
+        try {
+            const resp = await fetch(`${API_BASE}/change-password`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Auth-Token': this.authToken },
+                body: JSON.stringify({ username, newPassword })
+            });
+            const data = await resp.json();
+            if (!resp.ok) return this.showMessage(data.error || 'No se pudo cambiar la contraseña', 'error');
+            this.showMessage('Contraseña cambiada para ' + username, 'success');
+            this.closeChangePassModal();
+        } catch (e) {
+            this.showMessage('Error al cambiar la contraseña', 'error');
+        }
+    }
+
+    showLoginModal() {
+        const m = document.getElementById('loginModal');
+        if (!m) return;
+        m.setAttribute('aria-hidden', 'false');
+        // reset inputs
+        const pwd = document.getElementById('loginPassword'); if (pwd) pwd.value = '';
+        document.querySelectorAll('.profile-btn').forEach(b => b.classList.remove('selected'));
+    }
+
+    closeLoginModal() {
+        const m = document.getElementById('loginModal');
+        if (!m) return;
+        m.setAttribute('aria-hidden', 'true');
+    }
+
+    async attemptLogin(username, password) {
+        try {
+            const resp = await fetch(`${API_BASE}/login`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            const data = await resp.json();
+            if (!resp.ok) {
+                return this.showMessage(data.error || 'Error al iniciar sesión', 'error');
+            }
+            // Guardar token
+            this.authToken = data.token;
+            this.authRole = data.role;
+            this.authUser = data.username;
+            localStorage.setItem('authToken', data.token);
+            localStorage.setItem('authRole', data.role);
+            localStorage.setItem('authUser', data.username);
+
+            this.applyRoleToUI();
+            this.closeLoginModal();
+            this.showMessage(`Bienvenido ${this.authUser} (${this.authRole})`, 'success');
+        } catch (e) {
+            this.showMessage('Error al iniciar sesión', 'error');
+        }
+    }
+
+    async logout() {
+        try {
+            await fetch(`${API_BASE}/logout`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Auth-Token': this.authToken } });
+        } catch(_) {}
+        this.authToken = null; this.authRole = null; this.authUser = null;
+        localStorage.removeItem('authToken'); localStorage.removeItem('authRole'); localStorage.removeItem('authUser');
+        this.showLoginModal();
+        this.applyRoleToUI();
+    }
+
+    applyRoleToUI() {
+        // Habilitar/desabilitar el botón de generar reporte
+        const btnReporte = document.getElementById('btnReporte');
+        if (btnReporte) {
+            if (this.authRole === 'admin') {
+                btnReporte.disabled = false;
+                btnReporte.classList.remove('disabled');
+            } else {
+                btnReporte.disabled = true;
+                btnReporte.classList.add('disabled');
+            }
+        }
+
+        // Mostrar/ocultar botones de eliminar en reportes si existen
+        document.querySelectorAll('.btn-eliminar').forEach(b => {
+            if (this.authRole === 'guardia') b.style.display = 'none'; else b.style.display = '';
+        });
+
+        // Mostrar usuario en status + mostrar/ocultar botones de sesión
+        const statusEl = document.getElementById('status');
+        if (statusEl) {
+            if (this.authUser) statusEl.textContent = `Usuario: ${this.authUser}`; else statusEl.textContent = 'Conectado';
+        }
+
+        const btnLogout = document.getElementById('btnLogout');
+        const btnChangePass = document.getElementById('btnChangePass');
+        if (btnLogout) btnLogout.style.display = this.authUser ? '' : 'none';
+        if (btnChangePass) btnChangePass.style.display = this.authRole === 'admin' ? '' : 'none';
     }
 
     init() {
         console.log(' Aplicación de Registro de Visitas iniciada');
         // Cargar áreas al iniciar
         this.cargarAreas();
+        // Restaurar sesión o abrir modal de login
+        setTimeout(() => this.restoreSession(), 120);
     }
 
     setupEventListeners() {
@@ -63,6 +239,24 @@ class VisitasApp {
             this.limpiarResultados();
         });
 
+        // Area picker modal (UI mejorada para seleccionar área)
+        const areaPickerBtn = document.getElementById('areaPickerBtn');
+        const areaModal = document.getElementById('areaModal');
+        const areaModalClose = document.getElementById('areaModalClose');
+        const areaModalOverlay = document.getElementById('areaModalOverlay');
+        const areaCloseBtn = document.getElementById('areaCloseBtn');
+        const areaClearBtn = document.getElementById('areaClearBtn');
+
+        if (areaPickerBtn) {
+            areaPickerBtn.addEventListener('click', () => this.openAreaModal());
+        }
+        if (areaModalClose) areaModalClose.addEventListener('click', () => this.closeAreaModal());
+        if (areaCloseBtn) areaCloseBtn.addEventListener('click', () => this.closeAreaModal());
+        if (areaModalOverlay) areaModalOverlay.addEventListener('click', () => this.closeAreaModal());
+        if (areaClearBtn) areaClearBtn.addEventListener('click', () => this.clearSelectedArea());
+        // cerrar con Escape
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') this.closeAreaModal(); });
+
         // Escuchar eventos de Electron
         if (window.electronAPI) {
             window.electronAPI.onMenuEvent((event, action) => {
@@ -73,6 +267,46 @@ class VisitasApp {
                 }
             });
         }
+
+        // Login / perfiles
+        const profileGuardia = document.getElementById('profileGuardia');
+        const profileAdmin = document.getElementById('profileAdmin');
+        const loginModal = document.getElementById('loginModal');
+        const loginOverlay = document.getElementById('loginModalOverlay');
+        const loginSubmit = document.getElementById('loginSubmit');
+
+        let selectedProfile = null;
+        const setSelected = (username, el) => {
+            selectedProfile = username;
+            document.querySelectorAll('.profile-btn').forEach(b => b.classList.remove('selected'));
+            if (el) el.classList.add('selected');
+        };
+
+        if (profileGuardia) profileGuardia.addEventListener('click', (e) => setSelected('guardia', e.currentTarget));
+        if (profileAdmin) profileAdmin.addEventListener('click', (e) => setSelected('admin', e.currentTarget));
+        if (loginOverlay) loginOverlay.addEventListener('click', () => {}); // no cerrar al click fuera
+        if (loginSubmit) loginSubmit.addEventListener('click', () => {
+            const pass = document.getElementById('loginPassword').value || '';
+            if (!selectedProfile) return this.showMessage('Selecciona un perfil antes de iniciar sesión', 'error');
+            this.attemptLogin(selectedProfile, pass);
+        });
+
+        // Exponer para pruebas: abrir login si no hay sesión
+        window.appOpenLogin = () => this.showLoginModal();
+
+        // Logout / change-password buttons
+        const btnLogout = document.getElementById('btnLogout');
+        const btnChangePass = document.getElementById('btnChangePass');
+        if (btnLogout) btnLogout.addEventListener('click', () => this.logout());
+        if (btnChangePass) btnChangePass.addEventListener('click', () => this.showChangePassModal());
+
+        // Change password modal controls
+        const changePassClose = document.getElementById('changePassClose');
+        const changePassCancel = document.getElementById('changePassCancel');
+        const changePassSubmit = document.getElementById('changePassSubmit');
+        if (changePassClose) changePassClose.addEventListener('click', () => this.closeChangePassModal());
+        if (changePassCancel) changePassCancel.addEventListener('click', () => this.closeChangePassModal());
+        if (changePassSubmit) changePassSubmit.addEventListener('click', () => this.submitChangePassword());
     }
 
     async mostrarScannerInfo() {
@@ -106,8 +340,25 @@ class VisitasApp {
                     const contenido = data.data.trim();
                     const rutInput = document.getElementById('rut');
                     if (contenido.match(/\d{5,8}-[\dkK]/)) {
-                        rutInput.value = contenido;
-                        rutInput.focus();
+                        // Guardar valor previo para decidir foco
+                        const previo = rutInput.value;
+                        // Actualizar valor siempre que cambie
+                        if (previo !== contenido) rutInput.value = contenido;
+
+                        const nombreInput = document.getElementById('nombre');
+                        const active = document.activeElement;
+
+                        // Si el rut se escribió ahora (antes vacío) y el campo nombre está vacío,
+                        // mover el foco al nombre para que el usuario pueda escribirlo.
+                        if ((!previo || previo === '') && nombreInput && !nombreInput.value) {
+                            nombreInput.focus();
+                        } else {
+                            // Sólo enfocar rut si el usuario no está escribiendo en otro campo distinto
+                            // (evitar robar el foco cuando está escribiendo el nombre u otro input)
+                            if (active === document.body || active === document.documentElement || active === rutInput || !active || active.tagName === 'HTML') {
+                                rutInput.focus();
+                            }
+                        }
                     } else {
                         // Si no es rut, lo dejamos en nombre si está vacío y tiene espacios
                         const nombreInput = document.getElementById('nombre');
@@ -127,7 +378,7 @@ class VisitasApp {
             const resp = await fetch(`${API_BASE}/expirados`);
             const data = await resp.json();
             if (data && data.total > 0) {
-                this.showMessage(`⚠️ ${data.total} visita(s) expiradas (más de 6h sin salida).`, 'error');
+                this.showMessage(` ${data.total} visita(s) expiradas (más de 6h sin salida).`, 'error');
             }
         } catch (e) {
             // silencioso
@@ -191,11 +442,28 @@ class VisitasApp {
             const data = await response.json();
 
             if (response.ok) {
-                this.showMessage(`✅ Ingreso registrado: ${nombre} (${rut})`, 'success');
+                this.showMessage(` Ingreso registrado: ${nombre} (${rut})`, 'success');
                 document.getElementById('formIngreso').reset();
                 // Resetear select
                 const sel = document.getElementById('areaSelect');
                 if (sel) sel.selectedIndex = 0;
+                // Actualizar etiqueta visible
+                try { this.updateAreaLabel('Ninguna'); } catch(e){}
+
+                // Evitar que el último escaneo vuelva a autocompletar el RUT (consumir/limpiar el staging de scanner)
+                try {
+                    fetch(`${API_BASE}/scan-update`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ raw: '', rut: '', nombre: '', area: '' })
+                    }).catch(()=>{});
+                } catch(e) {}
+
+                // Asegurar que el campo RUT quede vacío y sin foco hasta que se escanee o escriba uno nuevo
+                try {
+                    const rutInput = document.getElementById('rut');
+                    if (rutInput) { rutInput.value = ''; rutInput.blur(); }
+                } catch(e) {}
 
                 // Recargar automáticamente la lista de visitas
                 setTimeout(() => {
@@ -223,15 +491,88 @@ class VisitasApp {
             const sel = document.getElementById('areaSelect');
             if (!sel) return;
             sel.innerHTML = '<option value="" disabled selected>Seleccione un área</option>';
+            // También poblar el modal con botones grandes
+            const grid = document.getElementById('areaGrid');
+            if (grid) grid.innerHTML = '';
+
             (data.data || []).forEach(a => {
                 const opt = document.createElement('option');
                 opt.value = a.id;
                 opt.textContent = a.nombre;
                 sel.appendChild(opt);
+
+                if (grid) {
+                    const tile = document.createElement('button');
+                    tile.type = 'button';
+                    tile.className = 'area-tile';
+                    tile.setAttribute('data-area-id', a.id);
+                    tile.setAttribute('data-area-name', a.nombre);
+                    tile.setAttribute('title', a.descripcion || a.nombre);
+                    tile.textContent = a.nombre;
+                    tile.addEventListener('click', () => {
+                        this.setSelectedArea(String(a.id), a.nombre);
+                        this.closeAreaModal();
+                    });
+                    grid.appendChild(tile);
+                }
             });
+            // Si ya había una selección, sincronizar el label
+            const selVal = sel.value;
+            if (selVal) {
+                const selectedOpt = sel.querySelector(`option[value="${selVal}"]`);
+                if (selectedOpt) this.updateAreaLabel(selectedOpt.textContent);
+            }
         } catch (e) {
             // Silencioso
         }
+    }
+
+    // UI del modal de selección
+    setSelectedArea(id, name) {
+        const sel = document.getElementById('areaSelect');
+        if (sel) sel.value = id;
+        this.updateAreaLabel(name || '');
+
+        // marcar tile seleccionado
+        const tiles = document.querySelectorAll('.area-tile');
+        tiles.forEach(t => t.classList.toggle('selected', t.getAttribute('data-area-id') === String(id)));
+    }
+
+    updateAreaLabel(name) {
+        // actualizar el texto visible dentro del botón
+        const btn = document.getElementById('areaPickerBtn');
+        if (btn) {
+            const textEl = btn.querySelector('.area-picker-text');
+            if (textEl) textEl.textContent = name && name.trim() ? name : 'Seleccione un área';
+            else btn.textContent = name || 'Seleccione un área';
+        }
+    }
+
+    openAreaModal() {
+        const modal = document.getElementById('areaModal');
+        if (!modal) return;
+        modal.setAttribute('aria-hidden', 'false');
+        // focus al grid para teclado
+        const grid = document.getElementById('areaGrid');
+        if (grid) grid.focus();
+    }
+
+    closeAreaModal() {
+        const modal = document.getElementById('areaModal');
+        if (!modal) return;
+        modal.setAttribute('aria-hidden', 'true');
+        // devolver foco al botón selector
+        const btn = document.getElementById('areaPickerBtn');
+        if (btn) btn.focus();
+    }
+
+    clearSelectedArea() {
+        const sel = document.getElementById('areaSelect');
+        if (sel) sel.value = '';
+        // desmarcar tiles
+        const tiles = document.querySelectorAll('.area-tile');
+        tiles.forEach(t => t.classList.remove('selected'));
+        this.updateAreaLabel('Ninguna');
     }
 
     // Registrar salida directamente desde el botón
@@ -241,7 +582,7 @@ class VisitasApp {
         }
 
         this.showLoading(true);
-
+                try { this.updateAreaLabel(''); } catch(e){}
         try {
             const response = await fetch(`${API_BASE}/salida`, {
                 method: 'POST',
@@ -254,7 +595,7 @@ class VisitasApp {
             const data = await response.json();
 
             if (response.ok) {
-                this.showMessage(`✅ Salida registrada para ${nombre}`, 'success');
+                this.showMessage(` Salida registrada para ${nombre}`, 'success');
 
                 // Recargar la lista de visitas automáticamente
                 setTimeout(() => {
@@ -336,15 +677,15 @@ class VisitasApp {
         let html = `
             <div class="stats">
                 <div class="stat-card">
-                    <h3>🟢 Activos</h3>
+                    <h3> Activos</h3>
                     <span class="stat-number">${visitasActivas.length}</span>
                 </div>
                 <div class="stat-card">
-                    <h3>🟡 Completados</h3>
+                    <h3> Completados</h3>
                     <span class="stat-number">${visitasCompletadas.length}</span>
                 </div>
                 <div class="stat-card">
-                    <h3>⚠️ Expirados</h3>
+                    <h3> Expirados</h3>
                     <span class="stat-number">${visitasExpiradas.length}</span>
                 </div>
                 <div class="stat-card">
@@ -366,6 +707,8 @@ class VisitasApp {
                     </div>
                     <div class="visita-info">
                         <small> Ingreso: ${visita.fecha_ingreso} ${visita.hora_ingreso}</small>
+                        <br>
+                        <small> Área: ${visita.area_nombre || (visita.area || 'No especificada')}</small>
                         <br>
                         <small> Tiempo dentro: ${this.calcularTiempo(visita.fecha_ingreso, visita.hora_ingreso)}</small>
                     </div>
@@ -390,6 +733,8 @@ class VisitasApp {
                     <div class="visita-info">
                         <small> Ingreso: ${visita.fecha_ingreso} ${visita.hora_ingreso}</small>
                         <br>
+                        <small> Área: ${visita.area_nombre || (visita.area || 'No especificada')}</small>
+                        <br>
                         <small> Salida: ${visita.fecha_salida} ${visita.hora_salida}</small>
                         <br>
                         <small> Duración: ${this.calcularDuracion(visita.fecha_ingreso, visita.hora_ingreso, visita.fecha_salida, visita.hora_salida)}</small>
@@ -399,6 +744,8 @@ class VisitasApp {
         }
 
         resultadoEl.innerHTML = html;
+        // Re-aplicar permisos (escondemos botones que correspondan al rol)
+        this.applyRoleToUI();
     }
 
     mostrarVisitaIndividual(visita) {
@@ -417,10 +764,11 @@ class VisitasApp {
                     <span class="rut">${visita.rut}</span>
                 </div>
                 <div class="visita-info">
+                    <p><strong>Área:</strong> ${visita.area_nombre || (visita.area || 'No especificada')}</p>
                     <p><strong>Fecha de ingreso:</strong> ${visita.fecha_ingreso} ${visita.hora_ingreso}</p>
                     ${visita.fecha_salida ?
                 `<p><strong>Fecha de salida:</strong> ${visita.fecha_salida} ${visita.hora_salida}</p>` :
-                `<p><strong>Estado:</strong> 🔵 Actualmente en el edificio</p>
+                `<p><strong>Estado:</strong>  Actualmente en el edificio</p>
                          <div class="visita-actions">
                             <button class="btn btn-salida" onclick="app.registrarSalidaDirecta('${visita.rut}', '${visita.nombre.replace(/'/g, "\\'")}')">
                                  Registrar Salida
@@ -483,11 +831,13 @@ class VisitasApp {
                 </div>
                 <div class="reporte-actions">
                     <button class="btn btn-descargar" onclick="app.descargarReporte('${reporte.nombre}')">
-                        📥 Descargar
+                        Descargar
                     </button>
+                    ${this.authRole === 'admin' ? `
                     <button class="btn btn-eliminar" onclick="app.eliminarReporte('${reporte.nombre}')">
-                        🗑️ Eliminar
+                         Eliminar
                     </button>
+                    ` : ''}
                 </div>
             </div>
         `).join('');
@@ -516,7 +866,7 @@ class VisitasApp {
                 window.URL.revokeObjectURL(url);
                 document.body.removeChild(a);
                 
-                this.showMessage(`✅ Reporte "${nombreArchivo}" descargado`, 'success');
+                this.showMessage(` Reporte "${nombreArchivo}" descargado`, 'success');
             } else {
                 this.showMessage('❌ Error al descargar el reporte', 'error');
             }
@@ -533,14 +883,17 @@ class VisitasApp {
         }
 
         try {
+            const headers = { 'Content-Type': 'application/json' };
+            if (this.authToken) headers['X-Auth-Token'] = this.authToken;
+
             const response = await fetch(`${API_BASE}/eliminar-reporte/${encodeURIComponent(nombreArchivo)}`, {
-                method: 'DELETE'
+                method: 'DELETE', headers
             });
 
             const data = await response.json();
 
             if (response.ok) {
-                this.showMessage(`✅ Reporte "${nombreArchivo}" eliminado`, 'success');
+                this.showMessage(`Reporte "${nombreArchivo}" eliminado`, 'success');
                 // Recargar la lista de reportes
                 setTimeout(() => {
                     this.listarReportes();
@@ -562,20 +915,35 @@ class VisitasApp {
         this.showLoading(true);
 
         try {
+            if (!this.authRole || this.authRole !== 'admin') {
+                this.showMessage('No autorizado: necesitas iniciar sesión como Administrador para generar reportes', 'error');
+                this.showLoading(false);
+                return;
+            }
+
+            if (!this.authRole || this.authRole !== 'admin') {
+                this.showMessage('No autorizado: necesitas iniciar sesión como Administrador para eliminar reportes', 'error');
+                return;
+            }
+            const headers = { 'Content-Type': 'application/json' };
+            if (this.authToken) headers['X-Auth-Token'] = this.authToken;
+
             const response = await fetch(`${API_BASE}/generar-reporte`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" }
+                headers
             });
 
             const data = await response.json();
 
             if (response.ok) {
-                this.showMessage(`✅ ${data.message} (${data.registros || 0} registros exportados)`, 'success');
-                
-                // Recargar automáticamente la lista de visitas (estará vacía)
+                // Limpiar UI de resultados inmediatamente para indicar historial vaciado
+                this.limpiarResultados();
+                this.showMessage(` ${data.message} (${data.registros_exportados || data.registros || 0} registros exportados)`, 'success');
+
+                // Recargar la lista de visitas tras un pequeño retraso para reflejar el estado limpio
                 setTimeout(() => {
                     this.obtenerVisitas();
-                }, 2000);
+                }, 800);
             } else {
                 this.showMessage(`❌ ${data.error}`, 'error');
             }

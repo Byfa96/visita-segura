@@ -16,6 +16,26 @@ const SSL_PORT = 3443;
 // Estado en memoria para último scan del escáner móvil
 let lastScan = null;
 
+// Sesiones simples en memoria (token -> { username, role, createdAt })
+const sessions = new Map();
+
+// Helper para obtener sesión desde header
+function getSessionFromRequest(req) {
+  const token = req.headers['x-auth-token'] || req.headers['authorization'] && String(req.headers['authorization']).replace(/^Bearer\s+/i, '');
+  if (!token) return null;
+  return sessions.get(token) || null;
+}
+
+function requireRole(role) {
+  return (req, res, next) => {
+    const sess = getSessionFromRequest(req);
+    if (!sess) return res.status(401).json({ error: 'No autorizado: token inválido o ausente' });
+    if (sess.role !== role) return res.status(403).json({ error: 'Acceso denegado: permiso insuficiente' });
+    req.user = { username: sess.username, role: sess.role };
+    next();
+  };
+}
+
 // Middleware
 app.use(cors());
 app.use(express.json());
@@ -144,10 +164,101 @@ app.get('/api/last-scan', (req, res) => {
   });
 });
 
+// Login simple: username + password (comparación SHA256)
+app.post('/api/login', (req, res) => {
+  try {
+    const { username, password } = req.body || {};
+    if (!username || !password) return res.status(400).json({ error: 'username y password requeridos' });
+
+    const db = database.db;
+    if (!db) return res.status(500).json({ error: 'DB no disponible' });
+
+    const crypto = require('crypto');
+    const hash = crypto.createHash('sha256').update(String(password)).digest('hex');
+
+    db.get(`SELECT username, role FROM app_users WHERE username = ? AND password_hash = ?`, [username, hash], (err, row) => {
+      if (err) return res.status(500).json({ error: 'Error al autenticar' });
+      if (!row) return res.status(401).json({ error: 'Credenciales inválidas' });
+
+      // Crear token de sesión en memoria
+      const token = require('crypto').randomBytes(24).toString('hex');
+      sessions.set(token, { username: row.username, role: row.role, createdAt: Date.now() });
+
+      res.json({ success: true, token, username: row.username, role: row.role });
+    });
+  } catch (e) {
+    res.status(500).json({ error: 'Error del servidor' });
+  }
+});
+
+app.post('/api/logout', (req, res) => {
+  try {
+    const token = req.headers['x-auth-token'] || (req.body && req.body.token);
+    if (token && sessions.has(token)) sessions.delete(token);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: 'Error al cerrar sesión' });
+  }
+});
+
+app.get('/api/me', (req, res) => {
+  const sess = getSessionFromRequest(req);
+  if (!sess) return res.json({ authenticated: false });
+  res.json({ authenticated: true, username: sess.username, role: sess.role });
+});
+
+// Listar usuarios (solo admin)
+app.get('/api/users', requireRole('admin'), (req, res) => {
+  const db = database.db;
+  if (!db) return res.status(500).json({ error: 'DB no disponible' });
+  db.all('SELECT id, username, role FROM app_users ORDER BY username ASC', (err, rows) => {
+    if (err) return res.status(500).json({ error: 'Error al obtener usuarios' });
+    res.json({ success: true, users: rows });
+  });
+});
+
+// Cambiar contraseña (admin -> puede cambiar cualquier cuenta)
+app.post('/api/change-password', requireRole('admin'), (req, res) => {
+  try {
+    const { username, newPassword } = req.body || {};
+    if (!username || !newPassword) return res.status(400).json({ error: 'username y newPassword requeridos' });
+    const crypto = require('crypto');
+    const hash = crypto.createHash('sha256').update(String(newPassword)).digest('hex');
+    const db = database.db;
+    db.run('UPDATE app_users SET password_hash = ? WHERE username = ?', [hash, username], function (err) {
+      if (err) return res.status(500).json({ error: 'Error al actualizar contraseña' });
+      if (this.changes === 0) return res.status(404).json({ error: 'Usuario no encontrado' });
+      res.json({ success: true, message: 'Contraseña actualizada' });
+    });
+  } catch (e) {
+    res.status(500).json({ error: 'Error del servidor' });
+  }
+});
+
+// Cambiar mi contraseña (autenticado) — requiere oldPassword
+// Cambiar contraseña (solo admin) - reemplaza change-my-password para forzar admin-only
+app.post('/api/change-my-password', requireRole('admin'), (req, res) => {
+  try {
+    const { username, newPassword } = req.body || {};
+    const targetUser = username || (req.user && req.user.username);
+    if (!targetUser || !newPassword) return res.status(400).json({ error: 'username y newPassword requeridos' });
+    const crypto = require('crypto');
+    const hash = crypto.createHash('sha256').update(String(newPassword)).digest('hex');
+    const db = database.db;
+    db.run('UPDATE app_users SET password_hash = ? WHERE username = ?', [hash, targetUser], function (err) {
+      if (err) return res.status(500).json({ error: 'Error al actualizar contraseña' });
+      if (this.changes === 0) return res.status(404).json({ error: 'Usuario no encontrado' });
+      res.json({ success: true, message: 'Contraseña actualizada' });
+    });
+  } catch (e) {
+    res.status(500).json({ error: 'Error del servidor' });
+  }
+});
+
 /* ===========================================================
     RUTA MANUAL PARA GENERAR REPORTE Y REINICIAR BASE DE DATOS
    =========================================================== */
-app.post('/api/generar-reporte', async (req, res) => {
+app.post('/api/generar-reporte', requireRole('admin'), async (req, res) => {
   try {
     const db = database.db;
     const fecha = new Date();
@@ -160,7 +271,10 @@ app.post('/api/generar-reporte', async (req, res) => {
     // Agregar timestamp al nombre del archivo para hacerlo único
     const reportePath = path.join(reportsDir, `reporte_${fechaString}_${timestamp}.csv`);
 
-  db.all("SELECT id, rut, nombre, fecha_ingreso, hora_ingreso, fecha_salida, hora_salida, created_at FROM visitantes", (err, rows) => {
+    db.all(`SELECT v.id, p.rut, p.nombre, v.fecha_ingreso, v.hora_ingreso, v.fecha_salida, v.hora_salida, v.created_at, v.area_id, a.nombre AS area_nombre
+      FROM visitas v
+      JOIN personas p ON p.id = v.persona_id
+      LEFT JOIN areas a ON a.id = v.area_id`, (err, rows) => {
       if (err) {
         console.error('Error al obtener los datos:', err);
         return res.status(500).json({ error: 'Error al generar reporte' });
@@ -179,11 +293,27 @@ app.post('/api/generar-reporte', async (req, res) => {
       fs.writeFileSync(reportePath, csv, 'utf8');
       console.log(` Reporte manual generado: ${reportePath}`);
 
-      // Reinicio histórico legacy eliminado: opcionalmente purgar visitas completadas (aquí se mantiene historial, no se borra)
-      res.status(200).json({
-        message: 'Reporte generado (historial conservado).',
-        archivo: path.basename(reportePath),
-        registros: rows.length
+      // PURGAR historial: eliminar todas las filas en 'visitas' (se conserva catálogo de personas y áreas)
+      const deleted = rows.length;
+      db.run('DELETE FROM visitas', (delErr) => {
+        if (delErr) {
+          console.error('Error al purgar visitas tras generar reporte:', delErr.message || delErr);
+          // aunque la exportación estuvo bien, respondemos informando el problema con la limpieza
+          return res.status(200).json({
+            message: 'Reporte generado, pero hubo un error al limpiar el historial.',
+            archivo: path.basename(reportePath),
+            registros_exportados: rows.length,
+            purge_error: String(delErr && delErr.message ? delErr.message : delErr)
+          });
+        }
+
+        console.log(`Historial purgado: ${deleted} visita(s) eliminadas.`);
+        res.status(200).json({
+          message: 'Reporte generado y historial limpiado.',
+          archivo: path.basename(reportePath),
+          registros_exportados: rows.length,
+          registros_eliminados: deleted
+        });
       });
     });
   } catch (error) {
@@ -214,7 +344,10 @@ async function generarReporteDiario() {
 
   console.log(' Generando reporte diario...');
 
-  db.all("SELECT id, rut, nombre, fecha_ingreso, hora_ingreso, fecha_salida, hora_salida, created_at FROM visitantes", (err, rows) => {
+    db.all(`SELECT v.id, p.rut, p.nombre, v.fecha_ingreso, v.hora_ingreso, v.fecha_salida, v.hora_salida, v.created_at, v.area_id, a.nombre AS area_nombre
+      FROM visitas v
+      JOIN personas p ON p.id = v.persona_id
+      LEFT JOIN areas a ON a.id = v.area_id`, (err, rows) => {
     if (err) {
       console.error('Error al obtener los datos:', err);
       return;
@@ -233,7 +366,15 @@ async function generarReporteDiario() {
     console.log(` Reporte diario generado: ${reportePath}`);
     console.log(` Registros exportados: ${rows.length}`);
 
-    // Ya no se borra el historial tras generar reporte diario.
+    // Purgar historial tras reporte diario: eliminar todas las visitas
+    const deleted = rows.length;
+    database.db.run('DELETE FROM visitas', (delErr) => {
+      if (delErr) {
+        console.error('Error al purgar visitas después del reporte diario:', delErr.message || delErr);
+      } else {
+        console.log(`Historial purgado tras reporte diario: ${deleted} visita(s) eliminadas.`);
+      }
+    });
   });
 }
 
@@ -394,7 +535,7 @@ app.get('/api/descargar-reporte/:nombre', (req, res) => {
 /* ===========================================================
     RUTA PARA ELIMINAR REPORTES
    =========================================================== */
-app.delete('/api/eliminar-reporte/:nombre', (req, res) => {
+app.delete('/api/eliminar-reporte/:nombre', requireRole('admin'), (req, res) => {
   try {
     const { nombre } = req.params;
     const reportePath = path.join(__dirname, 'reportes', nombre);

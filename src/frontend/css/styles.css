@@ -38,6 +38,24 @@ header h1 {
     backdrop-filter: blur(10px);
 }
 
+.status-area {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+}
+.session-controls { display:flex; gap:8px; align-items:center; }
+.session-controls .btn { padding:8px 10px; font-size:14px; }
+
+/* Change password modal style */
+.changepass-modal { position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:10001; }
+.changepass-modal[aria-hidden="false"] { display:flex }
+.changepass-overlay { position:absolute; inset:0; background:rgba(0,0,0,0.6); }
+.changepass-content { position:relative; z-index:2; background: #fff; color:#222; border-radius:10px; padding:18px; width:420px; max-width:calc(100% - 32px); }
+.changepass-content .form-group { margin-bottom:10px; }
+.changepass-content input, .changepass-content select { width:100%; padding:10px; border-radius:6px; border:1px solid #ddd; }
+.changepass-content .area-modal-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:8px; }
+
 .card {
   background-color: #f5f5f5; /* blanco humo */
   color: #222;
@@ -415,3 +433,146 @@ footer {
     border-radius: 8px;
     border: 1px solid #feb2b2;
 }
+
+/* Area picker visible button + label */
+.area-picker-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+}
+
+/* Input-style button */
+.btn-input {
+    width: 100%;
+    text-align: left;
+    padding: 12px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    background: #fff;
+    color: #222;
+    font-size: 16px;
+    display: inline-flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+.btn-input:hover {
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102,126,234,0.08);
+}
+.btn-input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102,126,234,0.18);
+}
+.area-picker-text { flex: 1; }
+.area-picker-arrow { color: #667eea; font-weight:700; }
+
+/* Modal para selección de área */
+.area-modal {
+    position: fixed;
+    inset: 0;
+    display: none; /* visible al abrir */
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+.area-modal[aria-hidden="false"] {
+    display: flex;
+}
+.area-modal-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(2px);
+}
+.area-modal-content {
+    position: relative;
+    max-width: 920px;
+    width: calc(100% - 40px);
+    max-height: 85vh;
+    overflow: auto;
+    background: #ffffff;
+    color: #222;
+    border-radius: 12px;
+    padding: 20px 24px 24px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    z-index: 2;
+}
+.area-modal h3 {
+    margin: 0 0 6px 0;
+}
+.area-modal-sub {
+    margin: 0 0 16px 0;
+    color: #6b7280;
+    font-size: 0.95em;
+}
+.area-modal-close {
+    position: absolute;
+    right: 10px;
+    top: 10px;
+    background: transparent;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    color: #4a5568;
+}
+
+.area-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    align-items: stretch;
+}
+.area-tile {
+    background: linear-gradient(135deg,#667eea,#764ba2);
+    color: white;
+    border-radius: 10px;
+    padding: 18px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-weight: 700;
+    font-size: 1.05em;
+    cursor: pointer;
+    min-height: 60px;
+    transition: transform .12s ease, box-shadow .12s ease, opacity .12s;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.2);
+}
+.area-tile:hover, .area-tile:focus {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 28px rgba(0,0,0,0.28);
+}
+.area-tile.selected {
+    outline: 3px solid rgba(255,204,0,0.9);
+}
+
+.area-modal-actions {
+    display:flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+@media (max-width: 900px) {
+    .area-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 480px) {
+    .area-grid { grid-template-columns: repeat(1, 1fr); }
+    .area-modal-content { padding: 16px; }
+}
+
+/* Login modal */
+.login-modal { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; z-index: 10000; }
+.login-modal[aria-hidden="false"] { display: flex; }
+.login-modal-overlay { position:absolute; inset:0; background: rgba(0,0,0,0.7); backdrop-filter: blur(2px); }
+.login-modal-content { position: relative; z-index:2; background: #fff; color: #222; border-radius: 12px; padding: 20px; width: 420px; max-width: calc(100% - 32px); box-shadow: 0 12px 40px rgba(0,0,0,0.4); }
+.login-modal-sub { color: #6b7280; margin-top: 6px; margin-bottom: 14px; }
+.profiles-row { display:flex; gap:12px; margin-bottom: 12px; }
+.profile-btn { flex:1; padding: 12px; border-radius:8px; border:1px solid #ddd; cursor:pointer; background:#fff; font-weight:700; }
+.profile-btn.selected { border-color: #667eea; box-shadow: 0 6px 18px rgba(102,126,234,0.18); background: linear-gradient(90deg,#eef2ff,#fff); }
+.login-pass { margin-top: 8px; }
+.login-actions { display:flex; justify-content:flex-end; margin-top: 12px; }
